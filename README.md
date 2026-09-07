@@ -709,3 +709,7 @@ Docker
 ```
 
 The main goal was to build the individual components as one reproducible local platform rather than treating scraping, analytics, machine learning, and the support assistant as unrelated exercises.
+
+## Project Status
+
+The three capstone modules have been implemented locally: data pipeline, analytics, and support assistant.
