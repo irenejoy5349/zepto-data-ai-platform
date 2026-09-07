@@ -717,3 +717,7 @@ The three capstone modules have been implemented locally: data pipeline, analyti
 ## Local Verification
 
 The data pipeline, analytics workflow, retrieval system, LangGraph workflow, Pydantic validation, and FastAPI endpoint were tested locally during development.
+
+## Local Verification
+
+The data pipeline, analytics workflow, retrieval system, LangGraph workflow, Pydantic validation, and FastAPI endpoint were tested locally during development.
