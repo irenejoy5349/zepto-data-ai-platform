@@ -1,0 +1,64 @@
+TITANIC DATASET PROFILE
+============================================================
+
+Original rows: 891
+Original columns: 15
+
+Column Data Types
+------------------------------------------------------------
+survived         int64
+pclass           int64
+sex                str
+age            float64
+sibsp            int64
+parch            int64
+fare           float64
+embarked           str
+class              str
+who                str
+adult_male        bool
+deck               str
+embark_town        str
+alive              str
+alone             bool
+
+Descriptive Statistics
+------------------------------------------------------------
+          survived      pclass   sex         age       sibsp       parch        fare embarked  class  who adult_male deck  embark_town alive alone
+count   891.000000  891.000000   891  714.000000  891.000000  891.000000  891.000000      889    891  891        891  203          889   891   891
+unique         NaN         NaN     2         NaN         NaN         NaN         NaN        3      3    3          2    7            3     2     2
+top            NaN         NaN  male         NaN         NaN         NaN         NaN        S  Third  man       True    C  Southampton    no  True
+freq           NaN         NaN   577         NaN         NaN         NaN         NaN      644    491  537        537   59          644   549   537
+mean      0.383838    2.308642   NaN   29.699118    0.523008    0.381594   32.204208      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+std       0.486592    0.836071   NaN   14.526497    1.102743    0.806057   49.693429      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+min       0.000000    1.000000   NaN    0.420000    0.000000    0.000000    0.000000      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+25%       0.000000    2.000000   NaN   20.125000    0.000000    0.000000    7.910400      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+50%       0.000000    3.000000   NaN   28.000000    0.000000    0.000000   14.454200      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+75%       1.000000    3.000000   NaN   38.000000    1.000000    0.000000   31.000000      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+max       1.000000    3.000000   NaN   80.000000    8.000000    6.000000  512.329200      NaN    NaN  NaN        NaN  NaN          NaN   NaN   NaN
+
+Missing Value Summary
+------------------------------------------------------------
+             missing_count  missing_percentage
+deck                   688           77.216611
+age                    177           19.865320
+embarked                 2            0.224467
+embark_town              2            0.224467
+sex                      0            0.000000
+pclass                   0            0.000000
+survived                 0            0.000000
+fare                     0            0.000000
+parch                    0            0.000000
+sibsp                    0            0.000000
+class                    0            0.000000
+adult_male               0            0.000000
+who                      0            0.000000
+alive                    0            0.000000
+alone                    0            0.000000
+
+Cleaning Decisions
+------------------------------------------------------------
+deck: 77.22% missing -> dropped column
+age: 19.87% missing -> median imputation
+embarked: 0.22% missing -> affected rows dropped
+embark_town: 0.22% missing -> affected rows dropped

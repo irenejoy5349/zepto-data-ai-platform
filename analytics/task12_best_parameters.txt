@@ -1,0 +1,13 @@
+TASK 12 - BEST RANDOM FOREST PARAMETERS
+============================================================
+
+model__max_depth: 10
+model__max_features: None
+model__n_estimators: 200
+
+Best CV F1 Score: 0.762416
+Tuned Test Accuracy: 0.831461
+Tuned Test Precision: 0.806452
+Tuned Test Recall: 0.735294
+Tuned Test F1: 0.769231
+OOB Score: 0.832630

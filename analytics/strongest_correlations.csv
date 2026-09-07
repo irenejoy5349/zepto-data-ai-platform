@@ -1,0 +1,3 @@
+variable_1,variable_2,correlation,absolute_correlation
+pclass,fare,-0.5481932852366449,0.5481932852366449
+sibsp,parch,0.4145416380997264,0.4145416380997264

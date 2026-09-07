@@ -1,0 +1,21 @@
+TASK 9 + TASK 10 - CLASSIFICATION REPORT
+============================================================
+
+Models evaluated
+------------------------------------------------------------
+1. Logistic Regression
+2. Decision Tree
+3. Random Forest
+
+Evaluation metrics
+------------------------------------------------------------
+              model  accuracy  precision   recall  f1_score  roc_auc
+Logistic Regression  0.808989   0.783333 0.691176  0.734375 0.860963
+      Decision Tree  0.764045   0.760000 0.558824  0.644068 0.837366
+      Random Forest  0.808989   0.765625 0.720588  0.742424 0.819586
+
+Methodology
+------------------------------------------------------------
+All three models use the same stratified 80/20 train-test split with random_state=42. Numeric features use median imputation and StandardScaler, while categorical features use most-frequent imputation and one-hot encoding. The preprocessing pipeline is fitted only on the training data and then applied to the test data.
+
+Metrics used: accuracy, precision, recall, F1 score and ROC-AUC. Confusion matrices and ROC curves are also generated.

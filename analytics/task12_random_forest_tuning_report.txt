@@ -1,0 +1,37 @@
+TASK 12 - RANDOM FOREST TUNING
+============================================================
+
+GridSearchCV configuration
+------------------------------------------------------------
+Cross-validation folds: 5
+Scoring metric: F1
+Random state: 42
+
+Parameter grid
+------------------------------------------------------------
+model__n_estimators: [100, 200, 300]
+model__max_depth: [None, 5, 10, 15]
+model__max_features: ['sqrt', 'log2', None]
+
+Best parameters
+------------------------------------------------------------
+model__max_depth: 10
+model__max_features: None
+model__n_estimators: 200
+
+Best CV F1 Score: 0.762416
+
+Tuned model test metrics
+------------------------------------------------------------
+Accuracy: 0.831461
+Precision: 0.806452
+Recall: 0.735294
+F1 Score: 0.769231
+
+Final Random Forest OOB score
+------------------------------------------------------------
+OOB Score: 0.832630
+
+Methodology
+------------------------------------------------------------
+GridSearchCV was performed only on the training data. The preprocessing pipeline is part of the estimator, so transformations are fitted within each training fold. The final tuned Random Forest uses the best hyperparameters and reports an out-of-bag score using bootstrap samples from the training set.

@@ -1,0 +1,14 @@
+Order Cancellation Policy
+
+An order can generally be cancelled only while it is still in a cancellable stage.
+
+Once an order has been prepared, dispatched, or handed to a delivery partner, cancellation
+may no longer be available.
+
+Customers should use the cancellation option shown for the active order.
+
+When cancellation is unavailable in the application, the customer should contact
+support with the order ID.
+
+Any refund resulting from an approved cancellation follows the applicable refund
+processing rules.

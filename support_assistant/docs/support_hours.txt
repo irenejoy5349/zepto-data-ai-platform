@@ -1,0 +1,14 @@
+Customer Support Hours
+
+Customer support is available during the service hours displayed in the application.
+
+For an active order issue, customers should provide the order ID when contacting support
+so the issue can be investigated more efficiently.
+
+For delivery delays, tracking problems, cancellations, returns, and refunds, customers
+should provide the relevant order information.
+
+Support response time can vary depending on request volume and issue complexity.
+
+The latest support availability should be checked in the application because service
+hours may change.

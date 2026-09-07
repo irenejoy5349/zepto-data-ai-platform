@@ -1,0 +1,106 @@
+SUPPORT ASSISTANT - RAG RETRIEVAL TEST
+============================================================
+
+Query: How long does a refund take?
+
+Top 3 retrieved documents
+------------------------------------------------------------
+1. doc_006 | refund_policy.txt | distance=0.543608
+2. doc_007 | return_policy.txt | distance=1.450591
+3. doc_001 | cancellation_policy.txt | distance=1.515796
+
+
+Prompt skeleton
+------------------------------------------------------------
+ROLE:
+You are a helpful Zepto customer support assistant.
+
+CONTEXT:
+Use only the information provided in the retrieved support
+documents to answer the customer's question.
+
+TASK:
+Answer the customer's question using the retrieved context.
+If the context does not contain enough information, clearly say
+that the available support documents do not provide enough
+information.
+
+FORMAT:
+Give a direct, concise answer.
+Mention relevant source document IDs when appropriate.
+
+LENGTH:
+Keep the answer within approximately 80 words unless additional
+detail is necessary.
+
+NEGATIVE CONSTRAINT:
+Do not invent policies, fees, deadlines, guarantees, or procedures
+that are not supported by the retrieved context.
+
+FEW-SHOT EXAMPLE:
+User: How long does a refund take?
+
+Retrieved context:
+Refunds for eligible orders are normally initiated within
+10 working days after approval.
+
+Answer:
+Eligible refunds are normally initiated within 10 working days
+after approval.
+
+
+RETRIEVED CONTEXT:
+[doc_006 | refund_policy.txt]
+Refund Policy
+
+Refunds for eligible orders are processed after the return or refund request is approved.
+
+Once approved, the refund is normally initiated within 10 working days.
+
+The original payment method is used whenever supported by the payment provider.
+
+Customers should keep the original payment receipt or transaction reference when
+requesting a refund.
+
+If a refund has been approved but has not appeared after the stated processing period,
+the customer should contact support with the order ID and refund reference.
+
+[doc_007 | return_policy.txt]
+Return Policy
+
+Eligible products may be returned according to the product-specific return conditions.
+
+Customers should initiate a return request through the support process and provide the
+order ID and the reason for the return.
+
+Products must generally be unused and in acceptable condition unless the return is for
+a damaged, incorrect, or defective item.
+
+Some product categories may have different return eligibility rules. Perishable or
+consumable products may not be eligible for standard returns unless they arrived damaged
+or incorrect.
+
+After a return request is submitted, support may review the request before approving
+the return.
+
+[doc_001 | cancellation_policy.txt]
+Order Cancellation Policy
+
+An order can generally be cancelled only while it is still in a cancellable stage.
+
+Once an order has been prepared, dispatched, or handed to a delivery partner, cancellation
+may no longer be available.
+
+Customers should use the cancellation option shown for the active order.
+
+When cancellation is unavailable in the application, the customer should contact
+support with the order ID.
+
+Any refund resulting from an approved cancellation follows the applicable refund
+processing rules.
+
+USER QUESTION:
+How long does a refund take?
+
+INSTRUCTION:
+Answer using the retrieved context only.

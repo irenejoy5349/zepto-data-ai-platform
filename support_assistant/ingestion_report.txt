@@ -1,0 +1,28 @@
+ZEpto SUPPORT ASSISTANT - INGESTION REPORT
+============================================================
+
+Embedding model: all-MiniLM-L6-v2
+Embedding dimension: 384
+Documents ingested: 8
+Documents stored in ChromaDB: 8
+Collection: zepto_support
+Persistent database path: support_assistant\chroma_db
+
+Documents
+------------------------------------------------------------
+doc_001: cancellation_policy.txt
+doc_002: delivery_policy.txt
+doc_003: gift_card_policy.txt
+doc_004: membership_policy.txt
+doc_005: order_tracking.txt
+doc_006: refund_policy.txt
+doc_007: return_policy.txt
+doc_008: support_hours.txt
+
+Sample retrieval query
+------------------------------------------------------------
+How long does a refund take?
+
+1. doc_006 - refund_policy.txt - distance=0.543608
+2. doc_007 - return_policy.txt - distance=1.450591
+3. doc_001 - cancellation_policy.txt - distance=1.515796

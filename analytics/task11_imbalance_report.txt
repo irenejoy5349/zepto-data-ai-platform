@@ -1,0 +1,29 @@
+TASK 11 - CLASS IMBALANCE ANALYSIS
+============================================================
+
+Training class distribution
+------------------------------------------------------------
+survived
+0    439
+1    272
+
+Approaches compared
+------------------------------------------------------------
+1. Baseline Logistic Regression
+2. Logistic Regression with class_weight='balanced'
+3. Logistic Regression with SMOTE
+
+Important methodology
+------------------------------------------------------------
+The test set was kept unchanged for all comparisons. SMOTE was applied only to the training data after the preprocessing transformer was fitted on the training data. This prevents synthetic samples from leaking into the test set.
+
+Metrics
+------------------------------------------------------------
+             approach  accuracy  precision   recall  f1_score
+             Baseline  0.808989   0.783333 0.691176  0.734375
+Class Weight Balanced  0.792135   0.718310 0.750000  0.733813
+                SMOTE  0.797753   0.735294 0.735294  0.735294
+
+Interpretation
+------------------------------------------------------------
+The highest recall was achieved by Class Weight Balanced with a recall of 0.7500. The highest F1 score was achieved by SMOTE with an F1 score of 0.7353. The preferred approach should be selected based on whether the project prioritizes identifying more survivors (recall) or balancing precision and recall (F1 score).

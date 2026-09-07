@@ -1,0 +1,41 @@
+TASK 4 - BIVARIATE ANALYSIS
+============================================================
+
+SURVIVAL BY SEX
+------------------------------------------------------------
+   sex  survival_rate  passenger_count
+female      74.038462              312
+  male      18.890815              577
+
+SURVIVAL BY PCLASS
+------------------------------------------------------------
+ pclass  survival_rate  passenger_count
+      1      62.616822              214
+      2      47.282609              184
+      3      24.236253              491
+
+SURVIVAL BY SEX + PCLASS
+------------------------------------------------------------
+   sex  pclass  survival_rate  passenger_count
+female       1      96.739130               92
+female       2      92.105263               76
+female       3      50.000000              144
+  male       1      36.885246              122
+  male       2      15.740741              108
+  male       3      13.544669              347
+
+CORRELATION MATRIX
+------------------------------------------------------------
+          survived  pclass     age   sibsp   parch    fare
+survived    1.0000 -0.3355 -0.0698 -0.0340  0.0832  0.2553
+pclass     -0.3355  1.0000 -0.3365  0.0817  0.0168 -0.5482
+age        -0.0698 -0.3365  1.0000 -0.2325 -0.1715  0.0937
+sibsp      -0.0340  0.0817 -0.2325  1.0000  0.4145  0.1609
+parch       0.0832  0.0168 -0.1715  0.4145  1.0000  0.2175
+fare        0.2553 -0.5482  0.0937  0.1609  0.2175  1.0000
+
+TWO STRONGEST ABSOLUTE CORRELATIONS
+------------------------------------------------------------
+variable_1 variable_2  correlation  absolute_correlation
+    pclass       fare    -0.548193              0.548193
+     sibsp      parch     0.414542              0.414542

@@ -1,0 +1,28 @@
+TASK 15 - MODEL PERSISTENCE
+============================================================
+
+Saved artifact
+------------------------------------------------------------
+analytics\titanic_rf_pipeline.joblib
+
+Pipeline components
+------------------------------------------------------------
+1. Numeric preprocessing: median imputation + StandardScaler
+2. Categorical preprocessing: most-frequent imputation + OneHotEncoder
+3. Random Forest classifier
+
+Test accuracy before persistence
+------------------------------------------------------------
+0.797753
+
+Reload validation
+------------------------------------------------------------
+The complete fitted pipeline was saved with joblib and successfully reloaded. A raw passenger record was passed directly to the reloaded pipeline, demonstrating that preprocessing and prediction are packaged together.
+
+Raw input prediction
+------------------------------------------------------------
+ pclass    sex  age  sibsp  parch  fare embarked
+      1 female   30      0      0  80.0        S
+
+Prediction: Survived
+Survival probability: 0.999800

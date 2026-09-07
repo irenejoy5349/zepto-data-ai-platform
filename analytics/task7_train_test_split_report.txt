@@ -1,0 +1,31 @@
+TASK 7 - STRATIFIED TRAIN/TEST SPLIT
+============================================================
+
+Split configuration
+------------------------------------------------------------
+Test size: 20%
+Training size: 80%
+Random state: 42
+Stratification: survived
+
+Training rows: 711
+Testing rows: 178
+
+Overall class distribution (%)
+survived
+0    61.754781
+1    38.245219
+
+Training class distribution (%)
+survived
+0    61.744023
+1    38.255977
+
+Testing class distribution (%)
+survived
+0    61.797753
+1    38.202247
+
+Justification
+------------------------------------------------------------
+Stratified splitting preserves approximately the same survival-class proportions in the training and testing sets as in the full cleaned dataset. This is appropriate because the target is binary and the Titanic dataset has unequal numbers of survivors and non-survivors. The split is performed before preprocessing so that preprocessing steps can later be fitted only on the training data.

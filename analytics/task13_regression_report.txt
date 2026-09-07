@@ -1,0 +1,32 @@
+TASK 13 - REGRESSION: FARE PREDICTION
+============================================================
+
+Target variable: fare
+Training rows: 711
+Testing rows: 178
+
+Evaluation metrics
+------------------------------------------------------------
+MAE: 21.098604
+RMSE: 41.702105
+R2: 0.348163
+Adjusted R2: 0.309130
+Number of predictors after preprocessing: 10
+
+Residual variance by prediction group
+------------------------------------------------------------
+prediction_group
+(-5.527, -0.572]      107.837861
+(-0.572, 28.951]       84.560778
+(28.951, 60.631]      151.380072
+(60.631, 100.548]    6080.929819
+
+Heteroscedasticity assessment
+------------------------------------------------------------
+Maximum/minimum variance ratio: 71.911943
+
+Residual variance changes substantially across prediction ranges, suggesting possible heteroscedasticity.
+
+Methodology
+------------------------------------------------------------
+Fare was modeled as a continuous target using Linear Regression. The train/test split was performed before preprocessing. Numeric variables use median imputation and standardization, while categorical variables use most-frequent imputation and one-hot encoding. The preprocessing pipeline was fitted only on the training data.

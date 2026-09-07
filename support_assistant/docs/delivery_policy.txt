@@ -1,0 +1,17 @@
+Delivery Policy
+
+Standard delivery is available for eligible orders placed during normal service hours.
+Customers can view the estimated delivery time on the order tracking page.
+
+Delivery times can vary depending on store availability, order volume, traffic, weather,
+and delivery partner availability.
+
+If an order is delayed beyond the displayed estimate, the customer should first check
+the tracking status. For continued delays, the customer can contact support with the
+order ID.
+
+Customers should ensure that the delivery address and contact number are correct before
+placing an order.
+
+Delivery ETA shown in the application is an estimate and may change after an order is
+placed.

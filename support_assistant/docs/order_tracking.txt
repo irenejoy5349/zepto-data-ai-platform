@@ -1,0 +1,14 @@
+Order Tracking
+
+Customers can track an active order using the order tracking section of the application.
+
+Tracking information may include order confirmation, preparation, dispatch, and
+delivery status.
+
+The displayed delivery estimate may change as the order progresses.
+
+If tracking has not updated for an extended period, the customer should verify the
+order ID and contact support when necessary.
+
+Support can use the order ID to investigate an order whose tracking status appears
+incorrect or delayed.

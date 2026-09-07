@@ -1,0 +1,18 @@
+TASK 6 - EXPLORATORY STANDARDIZATION
+============================================================
+
+Features standardized: age, fare
+
+BEFORE STANDARDIZATION
+------------------------------------------------------------
+age: mean=29.315152, std=12.984932
+fare: mean=32.096681, std=49.697504
+
+AFTER STANDARDIZATION
+------------------------------------------------------------
+age: mean=0.000000, std=1.000563
+fare: mean=0.000000, std=1.000563
+
+INTERPRETATION
+------------------------------------------------------------
+Standardization transforms each selected numeric feature so that its mean is approximately 0 and its standard deviation is approximately 1. The original distribution shape is retained while the feature scale is changed. This makes Age and Fare directly comparable in models that are sensitive to feature scale.

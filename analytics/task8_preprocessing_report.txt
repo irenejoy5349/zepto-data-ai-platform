@@ -1,0 +1,27 @@
+TASK 8 - PREPROCESSING PIPELINE
+============================================================
+
+Train/test split was performed before preprocessing.
+Preprocessing was fitted only on X_train and then applied to X_test.
+
+Numeric features
+------------------------------------------------------------
+pclass, age, sibsp, parch, fare
+
+Numeric preprocessing: median imputation + StandardScaler
+
+Categorical features
+------------------------------------------------------------
+sex, embarked
+
+Categorical preprocessing: most-frequent imputation + OneHotEncoder(handle_unknown='ignore')
+
+Dropped redundant/derived predictor columns
+------------------------------------------------------------
+alive, adult_male, alone, class, who, embark_town
+
+Training processed shape: (711, 10)
+Testing processed shape: (178, 10)
+
+Remaining training missing values: 0
+Remaining testing missing values: 0
