@@ -713,3 +713,7 @@ The main goal was to build the individual components as one reproducible local p
 ## Project Status
 
 The three capstone modules have been implemented locally: data pipeline, analytics, and support assistant.
+
+## Local Verification
+
+The data pipeline, analytics workflow, retrieval system, LangGraph workflow, Pydantic validation, and FastAPI endpoint were tested locally during development.
