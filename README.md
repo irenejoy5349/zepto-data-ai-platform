@@ -705,3 +705,14 @@ Docker
 ```
 
 The project brings these components together as one reproducible local platform rather than treating data collection, analytics, machine learning, and support automation as separate exercises.
+
+## Final Submission Checklist
+
+- All three modules are included in this single repository.
+- Required outputs and reproducibility scripts are committed.
+- Root README documents setup, execution, and design decisions.
+- Git feature-branch workflow is preserved in repository history.
+
+### Reproducibility Note
+
+Each module includes runnable scripts so the submitted outputs can be regenerated locally from the documented commands.
