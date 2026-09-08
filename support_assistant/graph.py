@@ -146,24 +146,32 @@ def classify_intent(
     # unknown -> direct fallback
     # -----------------------------------------------------
 
-    if matched_intent in DIRECT_INTENTS:
+    matched_topic = matched_intent
+
+    if matched_topic in DIRECT_INTENTS:
         route = "direct"
-    elif matched_intent != "unknown":
+    elif matched_topic != "unknown":
         route = "retrieve"
     else:
         route = "direct"
 
+    # Assignment-level intent labels:
+    # policy-related queries vs general questions.
+    intent_label = (
+        "policy_question"
+        if matched_topic != "unknown"
+        else "general_question"
+    )
 
     print(
         f"[classify_intent] "
-        f"intent={matched_intent} "
+        f"intent={intent_label} "
         f"route={route}"
     )
 
-
     return {
         **state,
-        "intent": matched_intent,
+        "intent": intent_label,
         "route": route
     }
 
