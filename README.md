@@ -565,13 +565,13 @@ A Dockerfile is provided at the project root.
 Build:
 
 ```bash
-docker build -t zepto-support-assistant .
+docker build -t zepto-data-ai .
 ```
 
 Run:
 
 ```bash
-docker run --rm -p 8000:8000 zepto-support-assistant
+docker run --rm -p 8000:8000 zepto-data-ai
 ```
 
 Swagger:
