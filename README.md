@@ -6,7 +6,7 @@ This project combines three practical components into one local AI and data plat
 2. An analytics and machine learning workflow built around the Titanic dataset.
 3. A local customer-support assistant using semantic retrieval and LangGraph.
 
-The graded workflow is designed to run locally without requiring a paid AI API.
+The  workflow is designed to run locally without requiring a paid AI API.
 
 ---
 
