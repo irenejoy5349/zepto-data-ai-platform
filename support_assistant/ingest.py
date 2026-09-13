@@ -1,5 +1,4 @@
 import os
-import shutil
 
 import chromadb
 from sentence_transformers import SentenceTransformer
@@ -50,25 +49,32 @@ client = chromadb.PersistentClient(
 )
 
 
-# ---------------------------------------------------------
-# Fresh collection for reproducible ingestion
-# ---------------------------------------------------------
+# =========================================================
+# FRESH COLLECTION FOR REPRODUCIBLE INGESTION
+# =========================================================
 
 try:
     client.delete_collection(
         name=COLLECTION_NAME
     )
+
     print(
         f"Existing collection '{COLLECTION_NAME}' deleted."
     )
+
 except Exception:
     pass
 
 
+# Explicitly configure cosine distance as required
+# by the capstone retrieval specification.
 collection = client.create_collection(
     name=COLLECTION_NAME,
     metadata={
-        "description": "Zepto customer support knowledge base"
+        "description": (
+            "Zepto customer support knowledge base"
+        ),
+        "hnsw:space": "cosine"
     }
 )
 
@@ -93,7 +99,10 @@ print("DOCUMENT INGESTION")
 print("-" * 70)
 
 
-for index, filename in enumerate(filenames):
+for index, filename in enumerate(
+    filenames,
+    start=1
+):
 
     file_path = os.path.join(
         DOCS_DIR,
@@ -111,11 +120,11 @@ for index, filename in enumerate(filenames):
 
     # -----------------------------------------------------
     # Keep each support document as one knowledge chunk.
-    # Documents are small and topic-focused.
+    # Documents are short and focused on one policy topic.
     # -----------------------------------------------------
 
     document_id = (
-        f"doc_{index + 1:03d}"
+        f"doc_{index:03d}"
     )
 
     documents.append(
@@ -187,6 +196,10 @@ print(
 )
 
 print(
+    f"Distance metric: cosine"
+)
+
+print(
     f"Stored documents: {stored_count}"
 )
 
@@ -222,7 +235,10 @@ print(
 )
 
 
-for index, (doc_id, metadata) in enumerate(
+for index, (
+    doc_id,
+    metadata
+) in enumerate(
     zip(
         results["ids"][0],
         results["metadatas"][0]
@@ -230,12 +246,14 @@ for index, (doc_id, metadata) in enumerate(
     start=1
 ):
 
-    distance = results["distances"][0][index - 1]
+    distance = (
+        results["distances"][0][index - 1]
+    )
 
     print(
         f"{index}. {doc_id} | "
         f"{metadata['source']} | "
-        f"distance={distance:.4f}"
+        f"cosine_distance={distance:.4f}"
     )
 
 
@@ -255,7 +273,7 @@ with open(
 ) as file:
 
     file.write(
-        "ZEpto SUPPORT ASSISTANT - INGESTION REPORT\n"
+        "ZEPTO SUPPORT ASSISTANT - INGESTION REPORT\n"
     )
 
     file.write(
@@ -280,6 +298,10 @@ with open(
 
     file.write(
         f"Collection: {COLLECTION_NAME}\n"
+    )
+
+    file.write(
+        "Distance metric: cosine\n"
     )
 
     file.write(
@@ -317,7 +339,10 @@ with open(
         f"{test_query}\n\n"
     )
 
-    for index, (doc_id, metadata) in enumerate(
+    for index, (
+        doc_id,
+        metadata
+    ) in enumerate(
         zip(
             results["ids"][0],
             results["metadatas"][0]
@@ -325,12 +350,14 @@ with open(
         start=1
     ):
 
-        distance = results["distances"][0][index - 1]
+        distance = (
+            results["distances"][0][index - 1]
+        )
 
         file.write(
             f"{index}. {doc_id} - "
             f"{metadata['source']} - "
-            f"distance={distance:.6f}\n"
+            f"cosine_distance={distance:.6f}\n"
         )
 
 
@@ -341,3 +368,4 @@ print(REPORT_PATH)
 print("\n" + "=" * 70)
 print("CHROMA INGESTION COMPLETE")
 print("=" * 70)
+```
