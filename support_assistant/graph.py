@@ -1,24 +1,51 @@
+import json
 import os
-from typing import TypedDict, List, Dict, Any
+from typing import Any, Dict, List, TypedDict
 
-from langgraph.graph import StateGraph, START, END
+import requests
+from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field, ValidationError
 
-from support_assistant.rag import retrieve_documents, build_prompt
+from support_assistant.rag import build_prompt, retrieve_documents
+
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
 
-# Default graded baseline:
-# MOCK_LLM=1
+# Required graded baseline:
+# MOCK_LLM unset or "1" -> deterministic local mock mode.
 #
-# Real LLM integration is optional and is NOT required
-# for the deterministic local baseline.
+# Optional extension:
+# MOCK_LLM="0" -> real LLM mode.
+MOCK_LLM = os.getenv("MOCK_LLM", "1").strip()
 
-MOCK_LLM = os.getenv(
-    "MOCK_LLM",
-    "1"
+# Optional Groq configuration for MOCK_LLM=0.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "llama-3.1-8b-instant"
 ).strip()
+GROQ_URL = (
+    "https://api.groq.com/openai/v1/chat/completions"
+)
+
+
+# =========================================================
+# PYDANTIC RESPONSE SCHEMAS
+# =========================================================
+
+class SupportResponse(BaseModel):
+    answer: str = Field(min_length=1)
+    sources: List[str]
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0
+    )
+
+
+class IntentResponse(BaseModel):
+    intent: str
 
 
 # =========================================================
@@ -53,6 +80,115 @@ POLICY_KEYWORDS = [
 
 
 # =========================================================
+# PYDANTIC / JSON HELPER
+# =========================================================
+
+def validate_model(model_cls, payload):
+    """
+    Support both Pydantic v2 and older Pydantic versions.
+    """
+    if hasattr(model_cls, "model_validate"):
+        return model_cls.model_validate(payload)
+    return model_cls.parse_obj(payload)
+
+
+# =========================================================
+# OPTIONAL REAL LLM CALL
+# =========================================================
+
+def call_real_llm(prompt: str, model_cls):
+    """
+    Optional real-LLM path.
+
+    The required graded baseline never calls this function
+    because MOCK_LLM defaults to "1".
+
+    When MOCK_LLM=0, invalid JSON/schema output is retried
+    up to two additional times with corrective instructions.
+    """
+
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "MOCK_LLM=0 requires GROQ_API_KEY "
+            "for the optional real-LLM path."
+        )
+
+    last_error = None
+
+    for attempt in range(3):
+        correction = ""
+
+        if attempt > 0:
+            correction = """
+
+CORRECTION:
+Your previous response did not satisfy the required JSON schema.
+Return ONLY valid JSON.
+Do not use Markdown fences.
+Ensure every required field is present and correctly typed.
+"""
+
+        response = requests.post(
+            GROQ_URL,
+            headers={
+                "Authorization": (
+                    f"Bearer {GROQ_API_KEY}"
+                ),
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": GROQ_MODEL,
+                "temperature": 0,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Return only valid JSON. "
+                            "Do not add Markdown fences."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            prompt + correction
+                        ),
+                    },
+                ],
+            },
+            timeout=60,
+        )
+
+        response.raise_for_status()
+
+        try:
+            content = (
+                response
+                .json()["choices"][0]["message"]["content"]
+            )
+
+            payload = json.loads(content)
+
+            return validate_model(
+                model_cls,
+                payload
+            )
+
+        except (
+            KeyError,
+            json.JSONDecodeError,
+            ValidationError,
+            TypeError,
+            ValueError,
+        ) as error:
+            last_error = error
+
+    raise RuntimeError(
+        "Real LLM output failed schema validation "
+        f"after 3 attempts: {last_error}"
+    )
+
+
+# =========================================================
 # NODE 1: CLASSIFY INTENT
 # =========================================================
 
@@ -60,33 +196,89 @@ def classify_intent(
     state: SupportState
 ) -> SupportState:
 
-    query = state.get("query", "").strip().lower()
+    query = state.get(
+        "query",
+        ""
+    ).strip().lower()
 
-    is_policy_question = any(
-        keyword in query
-        for keyword in POLICY_KEYWORDS
-    )
+    # -----------------------------------------------------
+    # REQUIRED MOCK BASELINE
+    # -----------------------------------------------------
 
-    intent_label = (
-        "policy_question"
-        if is_policy_question
-        else "general_question"
-    )
+    if MOCK_LLM != "0":
+
+        is_policy_question = any(
+            keyword in query
+            for keyword in POLICY_KEYWORDS
+        )
+
+        intent_label = (
+            "policy_question"
+            if is_policy_question
+            else "general_question"
+        )
+
+    # -----------------------------------------------------
+    # OPTIONAL REAL LLM PATH
+    # -----------------------------------------------------
+
+    else:
+
+        prompt = f"""
+Classify the user query as exactly one of:
+
+- policy_question
+- general_question
+
+A policy_question is related to Zepto delivery,
+returns, refunds, membership, tracking, cancellation,
+gift cards, or support hours.
+
+A general_question is unrelated to Zepto policy.
+
+USER QUERY:
+{query}
+
+Return JSON only:
+
+{{"intent": "policy_question"}}
+
+or
+
+{{"intent": "general_question"}}
+""".strip()
+
+        result = call_real_llm(
+            prompt,
+            IntentResponse
+        )
+
+        intent_label = result.intent
+
+        if intent_label not in {
+            "policy_question",
+            "general_question",
+        }:
+            raise RuntimeError(
+                "Invalid intent returned by real LLM."
+            )
 
     route = (
         "retrieve"
-        if is_policy_question
+        if intent_label == "policy_question"
         else "direct"
     )
 
     print(
-        f"[classify_intent] intent={intent_label} route={route}"
+        f"[classify_intent] "
+        f"intent={intent_label} "
+        f"route={route}"
     )
 
     return {
         **state,
         "intent": intent_label,
-        "route": route
+        "route": route,
     }
 
 
@@ -117,29 +309,26 @@ def retrieve_and_answer(
         ""
     ).strip()
 
+    # Retrieval always runs in both modes.
     retrieved = retrieve_documents(
         query=query,
         top_k=3
     )
 
-
-    # Build prompt using the retrieval layer.
+    # Build the structured RAG prompt.
     prompt = build_prompt(
         query=query,
         retrieved_documents=retrieved
     )
 
-
     # -----------------------------------------------------
-    # Deterministic MOCK_LLM baseline
+    # REQUIRED MOCK BASELINE
     # -----------------------------------------------------
 
     if MOCK_LLM != "0":
 
         if retrieved:
 
-            # Use the first retrieved document as the primary
-            # grounded context for the deterministic baseline.
             primary = retrieved[0]
 
             primary_text = (
@@ -154,7 +343,6 @@ def retrieve_and_answer(
                 .strip()
             )
 
-            # Keep the mock answer deterministic and grounded.
             answer = (
                 "Based on the retrieved context: "
                 f"{primary_text[:200]}"
@@ -165,20 +353,26 @@ def retrieve_and_answer(
                 for item in retrieved
             ]
 
-            # Deterministic confidence based on rank-1 retrieval.
-            confidence = round(
-                max(
-                    0.0,
-                    min(
-                        1.0,
-                        1.0 / (
-                            1.0
-                            + retrieved[0]["distance"]
-                        )
-                    )
-                ),
-                4
+            distance = retrieved[0].get(
+                "distance"
             )
+
+            if distance is None:
+                confidence = 1.0
+            else:
+                confidence = round(
+                    max(
+                        0.0,
+                        min(
+                            1.0,
+                            1.0 / (
+                                1.0
+                                + float(distance)
+                            )
+                        )
+                    ),
+                    4
+                )
 
         else:
 
@@ -189,37 +383,38 @@ def retrieve_and_answer(
             )
 
             sources = []
-
             confidence = 0.0
 
+    # -----------------------------------------------------
+    # OPTIONAL REAL LLM PATH
+    # -----------------------------------------------------
 
     else:
 
-        # -------------------------------------------------
-        # Optional real LLM branch
-        # -------------------------------------------------
-        #
-        # The capstone baseline does not require network access.
-        # Keep this branch explicit so the mock path remains the
-        # default graded behavior.
-        #
-        # A real provider can be added later without changing
-        # the graph routing.
-        #
+        schema_instruction = """
+Return ONLY JSON with this schema:
 
-        answer = (
-            "Based on the retrieved context: "
-            "Real LLM mode is not configured. "
-            "Set MOCK_LLM=1 for the deterministic local baseline."
+{
+  "answer": "string",
+  "sources": ["document_id"],
+  "confidence": 0.0
+}
+
+Rules:
+- answer must be a string
+- sources must contain only retrieved document IDs
+- confidence must be between 0 and 1
+- use only information present in the retrieved context
+"""
+
+        result = call_real_llm(
+            prompt + "\n\n" + schema_instruction,
+            SupportResponse
         )
 
-        sources = [
-            item["document_id"]
-            for item in retrieved
-        ]
-
-        confidence = 0.5 if retrieved else 0.0
-
+        answer = result.answer
+        sources = result.sources
+        confidence = result.confidence
 
     print(
         "[retrieve_and_answer] "
@@ -227,14 +422,13 @@ def retrieve_and_answer(
         f"sources={sources}"
     )
 
-
     return {
         **state,
         "retrieved_documents": retrieved,
         "prompt": prompt,
         "answer": answer,
         "sources": sources,
-        "confidence": confidence
+        "confidence": confidence,
     }
 
 
@@ -246,60 +440,70 @@ def direct_answer(
     state: SupportState
 ) -> SupportState:
 
-    intent = state.get(
-        "intent",
-        "unknown"
-    )
-
+    query = state.get(
+        "query",
+        ""
+    ).strip()
 
     # -----------------------------------------------------
-    # Deterministic support-hours answer
+    # REQUIRED MOCK BASELINE
     # -----------------------------------------------------
 
-    if intent == "support_hours":
+    if MOCK_LLM != "0":
 
         answer = (
-            "Customer support is available during the "
-            "service hours displayed in the application. "
-            "The latest availability should be checked "
-            "in the application because service hours may change."
+            "I can only answer questions about "
+            "Zepto policies right now."
         )
 
-        sources = [
-            "doc_008"
-        ]
-
-        confidence = 0.95
-
+        sources = []
+        confidence = 1.0
 
     # -----------------------------------------------------
-    # Deterministic fallback
+    # OPTIONAL REAL LLM PATH
     # -----------------------------------------------------
 
     else:
 
-        answer = (
-            "I’m sorry, but the available support documents "
-            "do not provide enough information to answer "
-            "that question."
+        prompt = f"""
+You are a Zepto support assistant.
+
+Answer the following general question directly.
+
+Do not invent Zepto policy information.
+Do not retrieve policy documents.
+
+Return ONLY JSON:
+
+{{
+  "answer": "string",
+  "sources": [],
+  "confidence": 0.0
+}}
+
+USER QUESTION:
+{query}
+""".strip()
+
+        result = call_real_llm(
+            prompt,
+            SupportResponse
         )
 
+        answer = result.answer
         sources = []
-
-        confidence = 0.20
-
+        confidence = result.confidence
 
     print(
         "[direct_answer] "
-        f"intent={intent}"
+        "intent=general_question"
     )
-
 
     return {
         **state,
         "answer": answer,
         "sources": sources,
-        "confidence": confidence
+        "confidence": confidence,
     }
 
 
@@ -310,11 +514,6 @@ def direct_answer(
 builder = StateGraph(
     SupportState
 )
-
-
-# ---------------------------------------------------------
-# Add required nodes
-# ---------------------------------------------------------
 
 builder.add_node(
     "classify_intent",
@@ -331,34 +530,19 @@ builder.add_node(
     direct_answer
 )
 
-
-# ---------------------------------------------------------
-# Start -> classify
-# ---------------------------------------------------------
-
 builder.add_edge(
     START,
     "classify_intent"
 )
-
-
-# ---------------------------------------------------------
-# Conditional routing
-# ---------------------------------------------------------
 
 builder.add_conditional_edges(
     "classify_intent",
     route_after_classification,
     {
         "retrieve": "retrieve_and_answer",
-        "direct": "direct_answer"
+        "direct": "direct_answer",
     }
 )
-
-
-# ---------------------------------------------------------
-# Finish edges
-# ---------------------------------------------------------
 
 builder.add_edge(
     "retrieve_and_answer",
@@ -370,8 +554,6 @@ builder.add_edge(
     END
 )
 
-
-# Compile graph
 graph = builder.compile()
 
 
@@ -398,21 +580,17 @@ def ask_support(
             "Query cannot be empty."
         )
 
-
-    initial_state: SupportState = {
-        "query": query
-    }
-
-
     result = graph.invoke(
-        initial_state
+        {
+            "query": query
+        }
     )
 
     return result
 
 
 # =========================================================
-# TEST CASES
+# LOCAL TESTS
 # =========================================================
 
 if __name__ == "__main__":
@@ -421,7 +599,6 @@ if __name__ == "__main__":
     print("LANGGRAPH SUPPORT ASSISTANT TEST")
     print("=" * 70)
 
-
     test_queries = [
         "How long does a refund take?",
         "Where is my order?",
@@ -429,7 +606,6 @@ if __name__ == "__main__":
         "Can I return an item?",
         "Tell me something unrelated to support"
     ]
-
 
     for number, query in enumerate(
         test_queries,
@@ -442,11 +618,9 @@ if __name__ == "__main__":
         )
         print("-" * 70)
 
-
         result = ask_support(
             query
         )
-
 
         print(
             f"Intent     : "
@@ -472,7 +646,6 @@ if __name__ == "__main__":
             f"Confidence : "
             f"{result.get('confidence')}"
         )
-
 
     print("\n" + "=" * 70)
     print("LANGGRAPH TEST COMPLETE")
