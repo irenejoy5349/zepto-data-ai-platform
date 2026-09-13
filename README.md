@@ -70,7 +70,7 @@ The source values are cleaned into useful types:
 * rating → integer from 1 to 5
 * availability → Boolean `in_stock`
 
-The pipeline handles unexpected parsing failures without stopping the complete run. Numeric parsing failures are handled with a median-based fallback where applicable, while unrecoverable invalid rows are dropped rather than allowing malformed data to stop the pipeline.
+The pipeline handles unexpected parsing failures without stopping the complete run. Numeric parsing failures are handled using a median-based fallback where applicable, while unrecoverable invalid rows are dropped rather than allowing malformed data to stop the pipeline.
 
 ## Currency Conversion
 
@@ -352,6 +352,13 @@ Random Forest gives the highest baseline F1 score and recall among the three cla
 Confusion matrices and ROC curves are generated for all three classifiers.
 
 ## Class Imbalance
+
+The survived/not-survived class balance is approximately:
+
+```text
+Not survived = 61.74%
+Survived     = 38.26%
+```
 
 The project compares three Logistic Regression variants:
 
@@ -1035,5 +1042,4 @@ The project brings these components together as one reproducible local platform 
 * Git feature-branch workflow is preserved in repository history.
 * No paid service is required for the graded baseline.
 * The single public GitHub repository is the submission artifact.
-
 
