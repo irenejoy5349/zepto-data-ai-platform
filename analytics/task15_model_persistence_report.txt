@@ -3,7 +3,7 @@ TASK 15 - MODEL PERSISTENCE
 
 Saved artifact
 ------------------------------------------------------------
-analytics\titanic_rf_pipeline.joblib
+analytics/titanic_rf_pipeline.joblib
 
 Pipeline components
 ------------------------------------------------------------

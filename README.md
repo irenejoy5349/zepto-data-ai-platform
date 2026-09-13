@@ -119,9 +119,11 @@ SQL results are also loaded through pandas, and the category-book relationship i
 
 ## Running the Pipeline
 
+The data pipeline script performs live scraping from Books to Scrape when network access is available; otherwise it uses the committed SQLite dataset as an offline fallback, then rebuilds the normalized database and all required query outputs.
+
 ```bash
-python data_pipeline\scrape_and_load.py
-python data_pipeline\queries.py
+python data_pipeline/scrape_and_load.py
+python data_pipeline/queries.py
 ```
 
 ---
@@ -141,6 +143,8 @@ The cleaned dataset is:
 ```text
 analytics/titanic_cleaned.csv
 ```
+
+The modeling workflow includes Logistic Regression, Decision Tree, and Random Forest classifiers with training-only preprocessing, per-model confusion matrices, ROC/AUC, and a side-by-side metrics table. Class imbalance is compared with a baseline, `class_weight="balanced"`, and training-only SMOTE. Random Forest tuning uses GridSearchCV with an OOB-enabled estimator.
 
 The cleaned dataset contains **889 rows**.
 
@@ -540,7 +544,11 @@ Request:
 }
 ```
 
-This request follows the direct-answer route in the local LangGraph workflow.
+This request follows the policy-question retrieval route in the local LangGraph workflow because the mock keyword heuristic includes “support hours”.
+
+### Mock routing rule
+
+In the default `MOCK_LLM=1` mode, the classifier lowercases the query. If the query contains any of `delivery`, `return`, `refund`, `membership`, `tracking`, `cancel`, `gift card`, or `support hours`, it is labeled `policy_question` and routed to `retrieve_and_answer`. Otherwise it is labeled `general_question` and routed to `direct_answer`.
 
 ### Start the API
 
@@ -619,20 +627,20 @@ uvicorn support_assistant.api:app --reload
 ### Run the data pipeline
 
 ```bash
-python data_pipeline\scrape_and_load.py
-python data_pipeline\queries.py
+python data_pipeline/scrape_and_load.py
+python data_pipeline/queries.py
 ```
 
 ### Run analytics
 
 ```bash
-python analytics\eda.py
-python analytics\visual_analysis.py
-python analytics\standardization.py
-python analytics\modeling.py
-python analytics\regression.py
-python analytics\comparison.py
-python analytics\persistence.py
+python analytics/eda.py
+python analytics/visual_analysis.py
+python analytics/standardization.py
+python analytics/modeling.py
+python analytics/regression.py
+python analytics/comparison.py
+python analytics/persistence.py
 ```
 
 ---

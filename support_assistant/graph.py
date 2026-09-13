@@ -37,78 +37,19 @@ class SupportState(TypedDict, total=False):
 
 
 # =========================================================
-# INTENT KEYWORDS
+# EXACT MOCK KEYWORD HEURISTIC REQUIRED BY THE RUBRIC
 # =========================================================
 
-INTENT_KEYWORDS = {
-    "delivery": [
-        "delivery",
-        "deliver",
-        "late delivery",
-        "delayed delivery",
-        "arrive",
-        "eta"
-    ],
-
-    "return": [
-        "return",
-        "returns",
-        "send back"
-    ],
-
-    "refund": [
-        "refund",
-        "money back",
-        "reimbursement"
-    ],
-
-    "membership": [
-        "membership",
-        "member",
-        "subscription",
-        "renewal"
-    ],
-
-    "tracking": [
-        "track",
-        "tracking",
-        "where is my order",
-        "order status",
-        "status"
-    ],
-
-    "cancel": [
-        "cancel",
-        "cancellation"
-    ],
-
-    "gift_card": [
-        "gift card",
-        "giftcard",
-        "gift code"
-    ],
-
-    "support_hours": [
-        "support hours",
-        "customer support hours",
-        "when is support available",
-        "support available"
-    ]
-}
-
-
-# =========================================================
-# DIRECT-ANSWER INTENTS
-# =========================================================
-
-# These queries can be answered by a deterministic local response
-# in the mock baseline without using an LLM.
-#
-# All other recognized support intents are routed through retrieval.
-
-DIRECT_INTENTS = {
-    "support_hours"
-}
+POLICY_KEYWORDS = [
+    "delivery",
+    "return",
+    "refund",
+    "membership",
+    "tracking",
+    "cancel",
+    "gift card",
+    "support hours",
+]
 
 
 # =========================================================
@@ -119,54 +60,27 @@ def classify_intent(
     state: SupportState
 ) -> SupportState:
 
-    query = state.get(
-        "query",
-        ""
-    ).strip().lower()
+    query = state.get("query", "").strip().lower()
 
-    matched_intent = "unknown"
+    is_policy_question = any(
+        keyword in query
+        for keyword in POLICY_KEYWORDS
+    )
 
-    # Check longer phrases first.
-    for intent, keywords in INTENT_KEYWORDS.items():
-
-        for keyword in keywords:
-
-            if keyword in query:
-                matched_intent = intent
-                break
-
-        if matched_intent != "unknown":
-            break
-
-
-    # -----------------------------------------------------
-    # Route:
-    # recognized support topic -> retrieve
-    # direct-only intent -> direct answer
-    # unknown -> direct fallback
-    # -----------------------------------------------------
-
-    matched_topic = matched_intent
-
-    if matched_topic in DIRECT_INTENTS:
-        route = "direct"
-    elif matched_topic != "unknown":
-        route = "retrieve"
-    else:
-        route = "direct"
-
-    # Assignment-level intent labels:
-    # policy-related queries vs general questions.
     intent_label = (
         "policy_question"
-        if matched_topic != "unknown"
+        if is_policy_question
         else "general_question"
     )
 
+    route = (
+        "retrieve"
+        if is_policy_question
+        else "direct"
+    )
+
     print(
-        f"[classify_intent] "
-        f"intent={intent_label} "
-        f"route={route}"
+        f"[classify_intent] intent={intent_label} route={route}"
     )
 
     return {

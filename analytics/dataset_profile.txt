@@ -8,18 +8,18 @@ Column Data Types
 ------------------------------------------------------------
 survived         int64
 pclass           int64
-sex                str
+sex             object
 age            float64
 sibsp            int64
 parch            int64
 fare           float64
-embarked           str
-class              str
-who                str
+embarked        object
+class           object
+who             object
 adult_male        bool
-deck               str
-embark_town        str
-alive              str
+deck            object
+embark_town     object
+alive           object
 alone             bool
 
 Descriptive Statistics

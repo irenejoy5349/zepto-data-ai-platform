@@ -39,19 +39,20 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # TASK 1: LOAD TITANIC DATASET ONCE AND CACHE
 # =========================================================
 
-if os.path.exists(RAW_DATA_PATH):
-    print("Loading cached Titanic dataset...")
-    df = pd.read_csv(RAW_DATA_PATH)
-else:
-    print("Downloading Titanic dataset using seaborn...")
+# Load the official seaborn Titanic dataset once and immediately cache it.
+# If internet access is unavailable, use the committed CSV as the offline fallback.
+try:
+    print("Loading Titanic dataset with seaborn...")
     df = sns.load_dataset("titanic")
-
-    df.to_csv(
-        RAW_DATA_PATH,
-        index=False
-    )
-
-    print(f"Dataset cached to: {RAW_DATA_PATH}")
+    df.to_csv(RAW_DATA_PATH, index=False)
+    print(f"Fresh dataset cached to: {RAW_DATA_PATH}")
+except Exception as exc:
+    if not os.path.exists(RAW_DATA_PATH):
+        raise RuntimeError(
+            "Unable to load the Titanic dataset and no offline titanic.csv is available."
+        ) from exc
+    print(f"Seaborn download unavailable ({exc}); loading offline fallback...")
+    df = pd.read_csv(RAW_DATA_PATH)
 
 
 # =========================================================
