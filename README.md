@@ -1,36 +1,48 @@
 # Zepto Data & AI Platform
 
-This project combines three practical components into one local AI and data platform:
+A complete AI/ML project covering data collection and SQL analytics, exploratory data analysis and machine learning, and a local RAG-based customer support assistant.
 
-1. A web data pipeline that collects and stores book information.
-2. An analytics and machine learning workflow built around the Titanic dataset.
-3. A local customer-support assistant using semantic retrieval and LangGraph.
-
-The workflow is designed to run locally without requiring a paid AI API.
-
----
-
-## Setup
-
-This repository uses **one consolidated `requirements.txt`** for all three modules.
-
-Install the dependencies with:
-
-```bash
-pip install -r requirements.txt
-```
-
-The same environment is used for the `/data_pipeline`, `/analytics`, and `/support_assistant` modules.
-
----
-
-## Project Layout
+The project is organized into three independent modules:
 
 ```text
 zepto-data-ai-platform/
+│
 ├── data_pipeline/
+│   ├── scrape_and_load.py
+│   ├── queries.py
+│   ├── queries.sql
+│   ├── query_6_output.csv
+│   └── zepto_books.db
+│
 ├── analytics/
+│   ├── eda.py
+│   ├── visual_analysis.py
+│   ├── standardization.py
+│   ├── modeling.py
+│   ├── regression.py
+│   ├── comparison.py
+│   ├── persistence.py
+│   ├── titanic.csv
+│   ├── titanic_cleaned.csv
+│   └── titanic_rf_pipeline.joblib
+│
 ├── support_assistant/
+│   ├── docs/
+│   │   ├── doc_01_delivery.txt
+│   │   ├── doc_02_returns_refunds.txt
+│   │   ├── doc_03_membership.txt
+│   │   ├── doc_04_tracking.txt
+│   │   ├── doc_05_cancellation.txt
+│   │   ├── doc_06_damaged_missing.txt
+│   │   ├── doc_07_gift_cards.txt
+│   │   └── doc_08_support_hours.txt
+│   ├── ingest.py
+│   ├── rag.py
+│   ├── graph.py
+│   ├── api.py
+│   ├── chroma_db/
+│   └── ingestion_report.txt
+│
 ├── Dockerfile
 ├── requirements.txt
 └── README.md
@@ -38,199 +50,284 @@ zepto-data-ai-platform/
 
 ---
 
-# 1. Data Pipeline
+# 1. Setup
 
-The data pipeline collects book information from the Books to Scrape website using Python.
+## Clone the repository
 
-The scraper uses `requests` to retrieve pages and `BeautifulSoup` to extract the required fields.
+```bash
+git clone https://github.com/irenejoy5349/zepto-data-ai-platform.git
+cd zepto-data-ai-platform
+```
 
-## Categories Collected
+## Create a virtual environment
 
-The implementation covers:
+### Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### Linux / macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+## Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+The repository uses one consolidated `requirements.txt` for all three modules.
+
+---
+
+# 2. Module 1 — Zepto Book Data Pipeline
+
+## Objective
+
+Scrape book information from the Books to Scrape website, clean the extracted data, convert prices from GBP to INR using a fixed exchange rate, store the data in normalized SQLite tables, and perform SQL and pandas analysis.
+
+## Technologies
+
+* Python
+* requests
+* BeautifulSoup
+* pandas
+* SQLite
+
+## Scraping
+
+The scraper collects books from three categories:
 
 * Travel
 * Mystery
 * Historical Fiction
 
-The final cleaned dataset contains **69 records across 3 categories**.
+The project contains **69 book records** across these three categories.
 
-## Fields Captured
-
-Each record includes:
+The scraper captures:
 
 * title
 * price in GBP
-* star rating
+* star rating text
 * availability
 * category
 
-The source values are cleaned into useful types:
+## Data cleaning
 
-* price → floating-point `price_gbp`
-* rating → integer from 1 to 5
-* availability → Boolean `in_stock`
+The raw values are converted into structured fields:
 
-The pipeline handles unexpected parsing failures without stopping the complete run. Numeric parsing failures are handled using a median-based fallback where applicable, while unrecoverable invalid rows are dropped rather than allowing malformed data to stop the pipeline.
+| Field                   | Cleaning decision                   |
+| ----------------------- | ----------------------------------- |
+| `price_gbp`             | Parsed into numeric float           |
+| `rating`                | Converted into integer from 1 to 5  |
+| `in_stock`              | Converted into boolean              |
+| Numeric parsing failure | Median imputation where appropriate |
+| Category                | Preserved from the source category  |
 
-## Currency Conversion
+## Currency conversion
 
-A fixed project-defined conversion rate is used:
+The required fixed conversion rate is used:
 
 ```text
 1 GBP = 105.50 INR
 ```
 
-The INR value is calculated locally:
+No live currency API is required.
+
+## SQLite schema
+
+The cleaned data is stored in normalized SQLite tables:
+
+### `categories`
 
 ```text
-price_inr = price_gbp * 105.50
+category_id  PRIMARY KEY
+category_name
 ```
 
-No external currency service is required.
+### `books`
 
-## SQLite Design
+```text
+book_id      PRIMARY KEY
+category_id  FOREIGN KEY → categories.category_id
+title
+price_gbp
+price_inr
+rating
+in_stock
+```
 
-The normalized database is:
+This provides a normalized primary-key / foreign-key relationship.
+
+## Running the pipeline
+
+```bash
+python data_pipeline/scrape_and_load.py
+```
+
+The script creates or refreshes:
 
 ```text
 data_pipeline/zepto_books.db
 ```
 
-It contains two related tables:
+## SQL analysis
+
+The repository contains SQL queries covering:
+
+* SELECT / WHERE
+* ORDER BY
+* LIMIT
+* DISTINCT
+* IN
+* BETWEEN
+* JOIN
+
+The queries are saved in:
 
 ```text
-categories
-    category_id (Primary Key)
-    category_name (UNIQUE)
-
-books
-    book_id (Primary Key)
-    title
-    price_gbp
-    price_inr
-    rating
-    in_stock
-    category_id (Foreign Key)
+data_pipeline/queries.sql
 ```
 
-Separating categories into their own table avoids storing the same category text repeatedly and provides the required primary-key/foreign-key relationship.
+Example query output is also stored in:
 
-## SQL Analysis
+```text
+data_pipeline/query_6_output.csv
+```
 
-The SQL workflow demonstrates:
+## SQL + pandas equivalence
 
-* `SELECT` and `WHERE`
-* `ORDER BY`
-* `LIMIT`
-* `DISTINCT`
-* `IN`
-* `BETWEEN`
-* `JOIN`
+The project uses `pd.read_sql()` for SQL results and reproduces the relational JOIN in memory using `pd.merge()`.
 
-The executed queries and their outputs are saved by the project scripts.
-
-SQL results are also loaded through pandas using `pd.read_sql(...)`.
-
-The category-book relationship is independently reproduced using `pd.merge(...)` on in-memory DataFrames, and the results are compared for equivalence.
-
-## Running the Pipeline
-
-The data pipeline script performs the scraping, cleaning, fixed-rate currency conversion, normalized SQLite loading, and query-output generation.
+Run:
 
 ```bash
-python data_pipeline/scrape_and_load.py
 python data_pipeline/queries.py
 ```
 
-The repository also contains the generated SQLite database and saved query outputs for reproducibility.
-
 ---
 
-# 2. Analytics and Machine Learning
+# 3. Module 2 — Titanic Analytics and Machine Learning
 
-The analytics workflow uses the Titanic dataset for exploratory analysis and predictive modeling.
+## Objective
 
-The original dataset is cached locally as:
+Perform end-to-end exploratory data analysis, preprocessing, classification, imbalance handling, hyperparameter tuning, regression, and model persistence using the Titanic dataset.
+
+## Dataset loading
+
+The Titanic dataset is loaded from seaborn once:
+
+```python
+sns.load_dataset("titanic")
+```
+
+The raw dataset is immediately cached as:
 
 ```text
 analytics/titanic.csv
 ```
 
-The cleaned dataset is:
+Subsequent modeling and analysis use the saved local dataset for reproducibility.
+
+## Data cleaning
+
+The cleaned dataset contains **889 rows**.
+
+Missing-value decisions:
+
+| Column        | Missing percentage | Decision                                 |
+| ------------- | -----------------: | ---------------------------------------- |
+| `deck`        |             77.22% | Dropped because of very high missingness |
+| `age`         |             19.87% | Median imputation                        |
+| `embarked`    |              0.22% | Affected rows dropped                    |
+| `embark_town` |              0.22% | Affected rows dropped                    |
+
+The cleaned dataset is saved as:
 
 ```text
 analytics/titanic_cleaned.csv
 ```
 
-The modeling workflow includes Logistic Regression, Decision Tree, and Random Forest classifiers with training-only preprocessing, confusion matrices, ROC/AUC, and a side-by-side metrics table.
+---
 
-Class imbalance is compared with a baseline, `class_weight="balanced"`, and training-only SMOTE.
+# 4. Univariate Analysis and Outliers
 
-Random Forest tuning uses GridSearchCV with an OOB-enabled estimator.
+## Age
 
-The cleaned dataset contains **889 rows**.
+Age is examined using:
 
-## Data Cleaning
+* histogram
+* boxplot
+* IQR-based outlier detection
 
-The cleaning decisions are based on the measured missing-value percentages and the required threshold rule:
+Number of detected age outliers:
 
-| Column        | Missing | Decision           | Reason                                                        |
-| ------------- | ------: | ------------------ | ------------------------------------------------------------- |
-| `deck`        |  77.22% | Drop column        | The missing rate is too high for reliable imputation.         |
-| `age`         |  19.87% | Median imputation  | This falls in the 5%–30% range, so imputation is appropriate. |
-| `embarked`    |   0.22% | Drop affected rows | The missing rate is below 5%, so affected rows are removed.   |
-| `embark_town` |   0.22% | Drop affected rows | The missing rate is below 5%, so affected rows are removed.   |
+```text
+65
+```
 
-After cleaning, the dataset contains no remaining missing values.
+## Fare
 
-## Exploratory Analysis
+Fare is examined using:
 
-Histograms and boxplots are used to examine `age` and `fare`.
+* histogram
+* boxplot
+* IQR-based outlier detection
 
-Using the IQR rule:
+Number of detected fare outliers:
 
-* Age outliers: **65**
-* Fare outliers: **114**
+```text
+114
+```
 
 Fare statistics:
 
-```text
-Mean     = 32.0967
-Median   = 14.4542
-Mode     = 8.0500
-Skewness = 4.8014
-```
+| Statistic |   Value |
+| --------- | ------: |
+| Mean      | 32.0967 |
+| Median    | 14.4542 |
+| Mode      |  8.0500 |
+| Skewness  |  4.8014 |
 
-The ordering `mean > median > mode`, together with the strongly positive skewness, indicates that the Fare distribution is strongly **right-skewed**. A relatively small number of high-fare observations pulls the mean substantially above the median.
+The mean is much higher than the median and the mode, which is consistent with a **strong right-skewed distribution** caused by high-fare observations.
 
-## Survival Analysis
+---
 
-Boolean masking with `&` and `|` is used for combined survival analysis.
+# 5. Survival Analysis
 
-Observed survival rates:
-
-```text
-Female = 74.04%
-Male   = 18.89%
-```
-
-By passenger class:
+## Survival by sex
 
 ```text
-1st class = 62.62%
-2nd class = 47.28%
-3rd class = 24.24%
+Female: 74.04%
+Male:   18.89%
 ```
 
-The sex breakdown shows a large difference in observed survival, with female passengers surviving at a much higher rate than male passengers.
+Female passengers had substantially higher observed survival than male passengers.
 
-Passenger class also shows a strong relationship with survival: first-class passengers had the highest observed survival rate, while third-class passengers had the lowest.
+## Survival by passenger class
 
-Combining sex and passenger class gives an even stronger separation of survival outcomes. Female passengers in higher classes had the strongest observed survival, while male passengers in lower classes had substantially lower survival.
+```text
+1st class: 62.62%
+2nd class: 47.28%
+3rd class: 24.24%
+```
 
-## Correlation Analysis
+Survival decreased from first to third class.
 
-The required correlation matrix contains exactly these six columns:
+## Survival by sex and passenger class
+
+The combined analysis shows that sex and passenger class together provide a stronger separation of survival outcomes than either variable alone.
+
+---
+
+# 6. Correlation Analysis
+
+The required six-column correlation matrix contains exactly:
 
 ```text
 survived
@@ -241,105 +338,127 @@ parch
 fare
 ```
 
-The boolean-derived columns `adult_male` and `alone` are excluded because they are derived/redundant flags rather than independent measured features.
-
-The two strongest absolute off-diagonal correlations are:
+The following columns are intentionally excluded:
 
 ```text
-pclass ↔ fare = -0.5482
-sibsp  ↔ parch = 0.4145
+adult_male
+alone
 ```
 
-These are the two feature pairs with the largest absolute off-diagonal correlation coefficients.
+Top two absolute off-diagonal correlation pairs:
 
-The negative `pclass`–`fare` correlation indicates that higher fares are associated with lower numeric class values, where first class is encoded as 1. The positive `sibsp`–`parch` correlation suggests that passengers traveling with siblings/spouses also tended to travel with parents/children, reflecting family-group structure.
+| Pair              | Correlation |
+| ----------------- | ----------: |
+| `pclass` ↔ `fare` |     -0.5482 |
+| `sibsp` ↔ `parch` |      0.4145 |
 
-A correlation heatmap is also generated.
+### Interpretation
 
-## Visual EDA
+The negative correlation between passenger class and fare shows that higher-class passengers generally paid higher fares.
 
-The project produces five distinct charts, each with an accompanying written interpretation.
-
-### 1. Survival Rate by Sex
-
-Female passengers had a survival rate of approximately 74.04%, compared with 18.89% for male passengers. This large difference indicates that sex was strongly associated with survival in the Titanic dataset.
-
-### 2. Survival Rate by Passenger Class
-
-Survival decreases from 62.62% in first class to 47.28% in second class and 24.24% in third class. This shows a strong relationship between passenger class and survival, with higher-class passengers having better observed survival rates.
-
-### 3. Survival Rate by Sex and Class
-
-The combined sex-and-class analysis separates passenger groups more clearly than either variable alone. Female passengers in higher classes had the strongest observed survival outcomes, while male passengers in lower classes had substantially lower survival.
-
-### 4. Fare Distribution by Survival
-
-Surviving passengers generally show a higher fare distribution than non-survivors. The plot also highlights the extreme high-fare observations identified by the IQR outlier analysis.
-
-### 5. Age Distribution by Survival
-
-The age distributions overlap substantially, but survival outcomes vary across different age ranges. This suggests that age contributes useful information, although its visual separation is weaker than the patterns observed for sex and passenger class.
-
-## Standardization
-
-Age and Fare are standardized using `StandardScaler`.
-
-The z-score transformation is:
-
-```text
-z = (x - mean) / std
-```
-
-After standardization, both features are centered around approximately zero with a standard deviation close to one.
-
-This exploratory experiment is kept separate from the final predictive workflow. The actual model pipeline performs preprocessing only after the train/test split.
+The positive relationship between `sibsp` and `parch` indicates that passengers traveling with siblings/spouses were also more likely to travel with parents/children.
 
 ---
 
-# 3. Classification
+# 7. Visual Exploratory Analysis
 
-The classification target is `survived`.
+The project produces **nine distinct charts**, including **four clearly multivariate charts**, with written interpretations.
 
-An 80/20 **stratified train-test split** is used:
+## Chart 1 — Survival Rate by Sex
+
+Female passengers had a survival rate of approximately 74.04%, compared with 18.89% for male passengers. This large difference indicates that sex was strongly associated with survival.
+
+## Chart 2 — Survival Rate by Passenger Class
+
+Survival decreases from 62.62% in first class to 47.28% in second class and 24.24% in third class. This shows a strong relationship between passenger class and survival.
+
+## Chart 3 — Survival Rate by Sex and Class
+
+Combining sex and passenger class reveals a stronger survival pattern than either variable alone. Female passengers generally had higher survival rates within each class, while third-class passengers had lower survival rates.
+
+## Chart 4 — Fare Distribution by Survival
+
+Surviving passengers generally show a higher fare distribution than non-survivors. The plot also highlights the high-fare outliers identified during IQR analysis.
+
+## Chart 5 — Age Distribution by Survival
+
+The age distributions overlap substantially, suggesting that age alone does not separate survival as clearly as sex or passenger class. Age can still contribute useful information when combined with other features.
+
+## Chart 6 — Age vs Fare by Survival Status
+
+This multivariate chart combines age and fare while separating passengers by survival status. Survivors are more frequently observed among passengers with higher fares, while age shows substantial overlap between the groups. The combined view demonstrates the value of considering multiple numerical features together.
+
+## Chart 7 — Fare by Passenger Class and Survival Status
+
+This multivariate chart combines passenger class, fare, and survival status. Fare distributions differ substantially across classes, while comparing survival within each class provides a more detailed view than examining fare or class alone.
+
+## Chart 8 — Age by Passenger Class and Survival Status
+
+This multivariate chart combines passenger class, age, and survival status. Age distributions vary across passenger classes and also differ between survivors and non-survivors, demonstrating why age should be interpreted together with other passenger characteristics.
+
+## Chart 9 — Family Relationships and Survival Status
+
+This multivariate chart combines `sibsp`, `parch`, and survival status. Most passengers are concentrated at low family-count values, while larger family structures are less common. The overlap between survival groups indicates that family variables alone do not explain survival but can contribute useful predictive information.
+
+---
+
+# 8. Standardization
+
+Exploratory standardization is performed for:
 
 ```text
-Training rows = 711
-Testing rows  = 178
+age
+fare
 ```
 
-The survived/not-survived class balance is approximately:
+Z-score standardization is applied using `StandardScaler`.
+
+Before and after scaling, the project checks the mean and standard deviation to demonstrate the effect of standardization.
+
+Importantly, this exploratory standardization is separate from the predictive preprocessing pipeline.
+
+---
+
+# 9. Train/Test Split
+
+The dataset is split before fitting preprocessing components.
+
+The split is stratified on the target:
+
+```python
+train_test_split(
+    ...,
+    stratify=y
+)
+```
+
+Final split:
 
 ```text
-Not survived = 61.74%
-Survived     = 38.26%
+Training rows: 711
+Test rows:     178
 ```
 
-Because the target classes are not perfectly balanced, stratification is used to preserve approximately the same class proportions in both the training and test sets.
+Class distribution is preserved:
 
-## Training Preprocessing
+```text
+Not survived: 61.74%
+Survived:     38.26%
+```
 
-Preprocessing is performed only after the train/test split.
+---
 
-The predictive workflow ensures that:
+# 10. Classification Models
 
-* missing-value imputation is fitted on training data only
-* categorical encoding is fitted on training data only
-* numeric scaling with `StandardScaler` is fitted on training data only
-* the fitted transformations are applied to the test data in transform-only mode
-
-This prevents test-set information from leaking into model training.
-
-## Models
-
-Three classifiers are trained on the identical train/test split:
+The following classifiers are evaluated on the same train/test split:
 
 * Logistic Regression
 * Decision Tree
 * Random Forest
 
-The Decision Tree is visualized using `plot_tree` with feature names and class names.
+Preprocessing is implemented using `Pipeline` and `ColumnTransformer` so that imputation, encoding, and scaling are fitted only on training data.
 
-## Baseline Results
+## Baseline results
 
 | Model               | Accuracy | Precision | Recall |     F1 | ROC-AUC |
 | ------------------- | -------: | --------: | -----: | -----: | ------: |
@@ -347,91 +466,83 @@ The Decision Tree is visualized using `plot_tree` with feature names and class n
 | Decision Tree       |   0.7640 |    0.7600 | 0.5588 | 0.6441 |  0.8374 |
 | Random Forest       |   0.8090 |    0.7656 | 0.7206 | 0.7424 |  0.8196 |
 
-Random Forest gives the highest baseline F1 score and recall among the three classifiers, while Logistic Regression gives the highest ROC-AUC.
+The Decision Tree produced the weakest recall and F1 among the three baseline models.
 
-Confusion matrices and ROC curves are generated for all three classifiers.
-
-## Class Imbalance
-
-The survived/not-survived class balance is approximately:
-
-```text
-Not survived = 61.74%
-Survived     = 38.26%
-```
-
-The project compares three Logistic Regression variants:
-
-| Variant                   | Precision | Recall |     F1 |
-| ------------------------- | --------: | -----: | -----: |
-| Baseline                  |    0.7833 | 0.6912 | 0.7344 |
-| `class_weight="balanced"` |    0.7183 | 0.7500 | 0.7338 |
-| SMOTE                     |    0.7353 | 0.7353 | 0.7353 |
-
-SMOTE is applied **only to the training data**, and the test set remains unchanged for evaluation.
-
-SMOTE produced the highest F1 score in this comparison, while `class_weight="balanced"` produced the highest recall. This shows the trade-off between improving minority-class recall and maintaining precision.
+Logistic Regression produced the strongest ROC-AUC, while Random Forest produced the highest baseline F1 and recall.
 
 ---
 
-# 4. Random Forest Tuning
+# 11. Class Imbalance Analysis
 
-`GridSearchCV` is used to search over:
+Three approaches are compared:
 
-```text
-n_estimators
-max_depth
-max_features
+1. Baseline model
+2. `class_weight="balanced"`
+3. SMOTE applied only to training data
+
+| Variant               | Precision | Recall |     F1 |
+| --------------------- | --------: | -----: | -----: |
+| Baseline              |    0.7833 | 0.6912 | 0.7344 |
+| Class Weight Balanced |    0.7500 | 0.7338 | 0.7338 |
+| SMOTE                 |    0.7353 | 0.7353 | 0.7353 |
+
+The balanced approaches improve recall but reduce precision.
+
+SMOTE is applied only to the training portion to avoid leaking synthetic samples into the test set.
+
+The final choice therefore considers the trade-off between detecting survivors and maintaining precision.
+
+---
+
+# 12. Random Forest Hyperparameter Tuning
+
+GridSearchCV is used to tune the Random Forest model over:
+
+```python
+{
+    "model__n_estimators": [100, 200],
+    "model__max_depth": [None, 5, 10],
+    "model__max_features": ["sqrt", "log2"]
+}
 ```
 
-The parameter grid is:
-
-```text
-n_estimators = [100, 200]
-max_depth    = [None, 5, 10]
-max_features = ['sqrt', 'log2']
-```
-
-The best parameter combination found by GridSearchCV is:
+## Best parameters
 
 ```text
 n_estimators = 200
-max_depth    = 5
+max_depth = 5
 max_features = sqrt
 ```
 
-The best cross-validation F1 score is:
+Best cross-validation F1:
 
 ```text
-Best CV F1 = 0.7408
+0.7408
 ```
 
-A final Random Forest is fitted with:
+Final tuned Random Forest uses:
 
 ```python
-RandomForestClassifier(
-    oob_score=True,
-    ...
-)
+oob_score=True
 ```
 
-The resulting OOB score is:
+OOB score:
 
 ```text
-OOB score = 0.8214
+0.8214
 ```
 
-The tuned Random Forest achieves the following held-out test metrics:
+## Tuned test performance
 
-```text
-Accuracy  = 0.8315
-Precision = 0.8654
-Recall    = 0.6618
-F1        = 0.7500
-ROC-AUC   = 0.8389
-```
+| Metric    |  Value |
+| --------- | -----: |
+| Accuracy  | 0.8315 |
+| Precision | 0.8654 |
+| Recall    | 0.6618 |
+| F1        | 0.7500 |
+| ROC-AUC   | 0.8389 |
 
-The corresponding confusion-matrix counts are:
+Confusion matrix:
 
 ```text
 TN = 103
@@ -440,100 +551,116 @@ FN = 23
 TP = 45
 ```
 
+The tuned Random Forest improves accuracy, precision and F1 compared with the baseline Random Forest.
+
 ---
 
-# 5. Fare Regression
+# 13. Regression
 
-A separate regression task predicts `fare` as a continuous target using multivariate Linear Regression.
-
-The regression model is evaluated using:
+A Linear Regression model is used to predict:
 
 ```text
-MAE         = 21.0986
-RMSE        = 41.7021
-R²          = 0.3482
-Adjusted R² = 0.3091
+fare
 ```
 
-A residual plot is generated and the residual spread is examined across the predicted-fare range.
+Regression performance:
 
-The residual spread is not constant across prediction values, so the residual plot suggests **possible heteroscedasticity**.
+| Metric      |   Value |
+| ----------- | ------: |
+| MAE         | 21.0986 |
+| RMSE        | 41.7021 |
+| R²          |  0.3482 |
+| Adjusted R² |  0.3091 |
 
-Classification and regression metrics are reported separately because they evaluate different types of prediction problems.
+The residual analysis shows that the spread of residuals changes across predicted values, indicating **possible heteroscedasticity**.
 
-## Final Comparison Table
-
-| Model               | Accuracy | Precision | Recall |     F1 | ROC-AUC |     MAE |    RMSE |     R² | Adjusted R² |
-| ------------------- | -------: | --------: | -----: | -----: | ------: | ------: | ------: | -----: | ----------: |
-| Logistic Regression |   0.8090 |    0.7833 | 0.6912 | 0.7344 |  0.8610 |       — |       — |      — |           — |
-| Decision Tree       |   0.7640 |    0.7600 | 0.5588 | 0.6441 |  0.8374 |       — |       — |      — |           — |
-| Random Forest       |   0.8090 |    0.7656 | 0.7206 | 0.7424 |  0.8196 |       — |       — |      — |           — |
-| Linear Regression   |        — |         — |      — |      — |       — | 21.0986 | 41.7021 | 0.3482 |      0.3091 |
-
-Classification and regression metrics are intentionally presented as separate metric groups because they evaluate different prediction problems and are not directly comparable as raw numbers.
-
-## Final Model Recommendation
-
-I would deploy **Random Forest** for the classification task because it provides the strongest baseline F1 score and recall among the three classifiers. Its baseline F1 score is **0.7424** and recall is **0.7206**, while Logistic Regression has the highest ROC-AUC at **0.8610**. After hyperparameter tuning, Random Forest achieves an improved test accuracy of **0.8315** and F1 score of **0.7500**, with precision of **0.8654** and ROC-AUC of **0.8389**. Therefore, Random Forest provides the best overall practical balance for the classification objective used in this project.
+The model explains a meaningful but limited portion of fare variance, so fare prediction remains challenging.
 
 ---
 
-# 6. Saved Model
+# 14. Final Model Recommendation
 
-The complete preprocessing and Random Forest prediction pipeline is saved as:
+The tuned Random Forest is selected as the preferred classifier because it achieved the highest test F1 score and strong accuracy and precision while maintaining reasonable recall.
+
+Logistic Regression achieved the strongest ROC-AUC among the baseline models, making it a useful interpretable benchmark.
+
+Decision Tree performed worse than the other classifiers on the main evaluation metrics.
+
+For this project, the tuned Random Forest provides the best overall classification balance and is therefore used as the persisted final model.
+
+---
+
+# 15. Model Persistence
+
+The complete preprocessing + Random Forest estimator pipeline is saved using `joblib`.
+
+Saved artifact:
 
 ```text
 analytics/titanic_rf_pipeline.joblib
 ```
 
-The saved artifact contains both preprocessing and the classifier.
+The project also demonstrates:
 
-The complete fitted pipeline is stored as a single `joblib` object so that raw new input can be passed directly to the saved artifact without manually repeating preprocessing steps.
+1. loading the saved pipeline,
+2. reloading it from disk,
+3. passing a raw passenger record,
+4. generating a prediction.
 
-The pipeline is reloaded with `joblib.load(...)` and tested with a raw passenger record to confirm that it can make predictions on raw input.
+This ensures the saved artifact includes the preprocessing steps required before inference.
 
 ---
 
-# 7. Support Assistant
+# 16. Module 3 — Zepto Customer Support Assistant
 
-The support assistant is a local retrieval-based customer-support system built around a small policy knowledge base.
+## Objective
 
-## Knowledge Base
+Build a local Retrieval-Augmented Generation-style customer support assistant using policy documents, local embeddings, ChromaDB, LangGraph and FastAPI.
 
-Exactly eight documents are stored under:
+The system supports a deterministic `MOCK_LLM=1` baseline so that the project can run locally without a paid API.
+
+---
+
+# 17. Support Knowledge Base
+
+The knowledge base contains eight focused policy documents:
 
 ```text
-support_assistant/docs/
+doc_001 – Delivery
+doc_002 – Returns and Refunds
+doc_003 – Membership
+doc_004 – Tracking
+doc_005 – Cancellation
+doc_006 – Damaged / Missing Items
+doc_007 – Gift Cards
+doc_008 – Customer Support Hours
 ```
 
-Topics:
+Each short policy document is kept as a focused knowledge chunk.
 
-* delivery
-* returns
-* refunds
-* membership
-* order tracking
-* cancellation
-* gift cards
-* support hours
+---
 
-Each file focuses on one support topic so that semantic retrieval can identify relevant policy information.
+# 18. Embeddings
 
-## Embedding Model
-
-The assistant uses:
+The embedding model is:
 
 ```text
 all-MiniLM-L6-v2
 ```
 
-Each document is represented using a **384-dimensional embedding**.
+Embedding dimension:
 
-The embedding model runs locally using `sentence-transformers` and does not require an external embedding API.
+```text
+384
+```
 
-## ChromaDB
+Embeddings are normalized before storage and retrieval.
 
-Embeddings are persisted in:
+---
+
+# 19. ChromaDB
+
+ChromaDB is stored persistently under:
 
 ```text
 support_assistant/chroma_db/
@@ -545,46 +672,45 @@ Collection name:
 zepto_support
 ```
 
-All eight support documents are indexed.
+The collection explicitly uses cosine distance:
 
-A query such as:
-
-```text
-How long does a refund take?
+```python
+"hnsw:space": "cosine"
 ```
 
-returns the refund policy as the highest-ranked result.
+Documents and query embeddings are normalized, and the retrieval step returns the top three results.
 
-## Prompt Structure
+The ingestion script also creates an ingestion report containing the document count, embedding dimension, collection name, distance metric, and sample retrieval results.
 
-The RAG prompt follows the required:
+Run ingestion with:
 
-```text
-ROLE
-CONTEXT
-TASK
-FORMAT
-LENGTH
+```bash
+python support_assistant/ingest.py
 ```
-
-structure.
-
-It also includes:
-
-* an explicit negative constraint against unsupported claims
-* a few-shot example
-* retrieved context
-* the user's question
-
-The assistant is instructed to remain grounded in the retrieved support documents.
 
 ---
 
-# 8. LangGraph Workflow
+# 20. Prompt Design
 
-The support assistant is implemented using a LangGraph `StateGraph`.
+The support assistant prompt includes:
 
-The three required nodes are:
+* Role
+* Context
+* Task
+* Output format
+* Length constraint
+* Negative constraint
+* Few-shot examples
+
+The negative constraint instructs the model not to invent unsupported policy information.
+
+This keeps generated answers grounded in retrieved support content.
+
+---
+
+# 21. LangGraph Workflow
+
+The support assistant uses a `StateGraph` with three required nodes:
 
 ```text
 classify_intent
@@ -592,106 +718,63 @@ retrieve_and_answer
 direct_answer
 ```
 
-The workflow is:
+Flow:
 
 ```text
-START
-  |
-  v
-classify_intent
-  |
-  +---- policy_question ----> retrieve_and_answer ----+
-  |                                                  |
-  +---- general_question --> direct_answer ----------+
-                                                     |
-                                                    END
+                ┌─────────────────────────┐
+                │     classify_intent     │
+                └────────────┬────────────┘
+                             │
+                 ┌───────────┴───────────┐
+                 │                       │
+        policy_question          general_question
+                 │                       │
+                 ▼                       ▼
+     retrieve_and_answer          direct_answer
+                 │                       │
+                 └───────────┬───────────┘
+                             ▼
+                          Response
 ```
-
-The mock classifier uses the required policy keywords:
-
-* delivery
-* return
-* refund
-* membership
-* tracking
-* cancel
-* gift card
-* support hours
-
-In the default mock mode, if the lowercased query contains any of these keywords, it is labeled:
-
-```text
-policy_question
-```
-
-and routed to:
-
-```text
-retrieve_and_answer
-```
-
-Otherwise it is labeled:
-
-```text
-general_question
-```
-
-and routed to:
-
-```text
-direct_answer
-```
-
-The routing logic is deterministic in the required mock baseline.
 
 ---
 
-# 9. Mock LLM Mode
+# 22. Mock Mode
 
-The default configuration is:
+The default baseline uses:
 
 ```text
 MOCK_LLM=1
 ```
 
-This provides a deterministic local baseline and does not require an external LLM provider.
+In mock mode, intent classification uses deterministic keyword matching.
 
-## Policy Questions
-
-For a `policy_question`:
-
-1. The query is embedded locally.
-2. ChromaDB retrieves the top three similar chunks.
-3. The top retrieved chunk is used for the deterministic mock answer.
-4. The answer begins with:
+Policy-related keywords include:
 
 ```text
-Based on the retrieved context:
+delivery
+return
+refund
+membership
+tracking
+cancel
+gift card
+support hours
 ```
 
-5. Retrieved document identifiers are returned in `sources`.
+Policy queries are routed to retrieval.
 
-## General Questions
+General questions are routed to the direct-answer path.
 
-For a `general_question`, the mock branch returns a fixed safe response:
+The retrieval path still performs the actual embedding query and top-3 ChromaDB retrieval in mock mode.
 
-```text
-I can only answer questions about Zepto policies right now.
-```
-
-The general-question route does not use policy retrieval.
-
-## MOCK_LLM Branching
-
-In the graded baseline, the mock configuration avoids external LLM calls.
-
-The embedding and ChromaDB retrieval stages remain local. The optional real-LLM path changes the classification/generation behavior when `MOCK_LLM=0`.
+The mock response is deterministic and based on the retrieved context.
 
 ---
 
-# 10. Structured Output
+# 23. Structured Output
 
-Pydantic validation is used for the assistant response.
+The API response is validated with Pydantic.
 
 The response contains:
 
@@ -701,31 +784,25 @@ sources
 confidence
 ```
 
-The confidence value is constrained to:
+`confidence` is constrained to the range:
 
 ```text
-0.0 <= confidence <= 1.0
+0 to 1
 ```
 
-In mock mode, the response is populated deterministically in Python.
-
-For policy questions, `sources` contains the retrieved document/chunk identifiers.
-
-For general questions, `sources` is an empty list.
+In real-LLM mode, invalid structured output can trigger corrective retries before falling back.
 
 ---
 
-# 11. FastAPI
+# 24. FastAPI
 
-The assistant exposes:
+The support assistant exposes:
 
 ```text
 POST /ask
 ```
 
-## Example 1 — Policy Retrieval
-
-Request:
+Request format:
 
 ```json
 {
@@ -733,47 +810,51 @@ Request:
 }
 ```
 
-Example response:
+The local server can be started using:
+
+```bash
+uvicorn support_assistant.api:app --host 0.0.0.0 --port 8000
+```
+
+Swagger UI:
+
+```text
+http://localhost:8000/docs
+```
+
+Example API endpoint:
+
+```text
+http://localhost:8000/ask
+```
+
+---
+
+# 25. Example Support Queries
+
+## Example 1 — Policy question
 
 ```json
 {
-  "answer": "Based on the retrieved context: ...",
-  "sources": [
-    "doc_006",
-    "doc_007",
-    "doc_001"
-  ],
-  "confidence": 0.6478
+  "query": "How long does a refund take?"
 }
 ```
 
-This query contains the `refund` keyword, so it is classified as `policy_question` and routed to `retrieve_and_answer`.
+In mock mode, the classifier identifies this as a policy question and the workflow performs ChromaDB retrieval before returning a grounded response.
 
-## Example 2 — General Question
+Retrieved sources include support policy documents related to refunds.
 
-Request:
+## Example 2 — General question
 
 ```json
 {
-  "query": "Tell me something unrelated to Zepto policies."
+  "query": "Hello, how are you?"
 }
 ```
 
-Example response:
+This is classified as a general question and routed to the direct-answer node without policy retrieval.
 
-```json
-{
-  "answer": "I can only answer questions about Zepto policies right now.",
-  "sources": [],
-  "confidence": 1.0
-}
-```
-
-This query does not contain any of the required policy keywords, so it is classified as `general_question` and routed to `direct_answer`.
-
-## Support Hours Routing Check
-
-Request:
+## Support-hours query
 
 ```json
 {
@@ -781,265 +862,224 @@ Request:
 }
 ```
 
-Because the required mock keyword heuristic includes `support hours`, this query is classified as `policy_question` and routed to `retrieve_and_answer`.
-
-The relevant support-hours policy document is `doc_008`.
-
-## Start the API
-
-```bash
-uvicorn support_assistant.api:app --reload
-```
-
-Swagger documentation:
+Because `support hours` is a policy keyword, this query is classified as a policy question and routed through:
 
 ```text
-http://127.0.0.1:8000/docs
-```
-
-The `/ask` endpoint has been tested successfully with an HTTP 200 response.
-
----
-
-# 12. RAG Architecture — Ingestion → Embedding → Retrieval → Generation
-
-The support assistant follows four explicit RAG stages.
-
-### 1. Ingestion
-
-`support_assistant/ingest.py` reads the eight files in `support_assistant/docs/`.
-
-Because each policy document is short and focused on one topic, each document is kept as a simple chunk.
-
-The chunks and metadata are stored in the persistent ChromaDB collection:
-
-```text
-zepto_support
-```
-
-### 2. Embedding
-
-`support_assistant/ingest.py` uses the local `all-MiniLM-L6-v2` model to convert each chunk into a 384-dimensional vector.
-
-No external embedding API key is required.
-
-### 3. Retrieval
-
-`support_assistant/rag.py` embeds the incoming query and retrieves the top three most similar chunks from the `zepto_support` collection.
-
-The LangGraph node `retrieve_and_answer` performs this retrieval.
-
-### 4. Generation
-
-For a `policy_question`, `retrieve_and_answer` uses the retrieved context and the structured prompt to produce the answer.
-
-In the graded `MOCK_LLM=1` mode, the answer is deterministic and grounded in the top retrieved chunk.
-
-The overall flow is:
-
-```text
-Policy documents
-      |
-      v
-Ingestion / chunking
-      |
-      v
-all-MiniLM-L6-v2 embeddings
-      |
-      v
-ChromaDB: zepto_support
-      |
-      v
-User query
-      |
-      v
 classify_intent
-      |
-      +-------- general_question --------> direct_answer
-      |
-      +-------- policy_question --------> retrieve_and_answer
-                                              |
-                                              v
-                                        Top-3 retrieval
-                                              |
-                                              v
-                                           Answer
-                                              |
-                                              v
-                                      Pydantic response
+      ↓
+retrieve_and_answer
 ```
 
-The embedding and retrieval stages remain local in both modes. The optional real-LLM path changes the classification/generation behavior when `MOCK_LLM=0`.
+The relevant support-hours document is therefore retrieved from ChromaDB.
 
 ---
 
-# 13. Docker
+# 26. RAG Architecture
 
-A Dockerfile is provided at the project root.
+The overall support-assistant architecture is:
+
+```text
+Policy Documents
+       ↓
+Document Ingestion
+       ↓
+MiniLM Embeddings
+       ↓
+Persistent ChromaDB
+       ↓
+User Query
+       ↓
+Query Embedding
+       ↓
+Top-3 Similarity Retrieval
+       ↓
+Prompt + Retrieved Context
+       ↓
+Answer Generation
+       ↓
+Pydantic Structured Response
+       ↓
+FastAPI
+```
+
+The deterministic mock mode demonstrates the complete retrieval and routing flow without requiring an external paid LLM service.
+
+---
+
+# 27. Docker
+
+The project includes a Dockerfile for local execution.
 
 Build:
 
 ```bash
-docker build -t zepto-data-ai .
+docker build -t zepto-data-ai:latest .
 ```
 
 Run:
 
 ```bash
-docker run --rm -p 8000:8000 zepto-data-ai
+docker run --rm -p 8000:8000 zepto-data-ai:latest
 ```
 
-Swagger:
+The Docker baseline uses:
 
 ```text
-http://127.0.0.1:8000/docs
+MOCK_LLM=1
 ```
 
-The Docker configuration keeps deterministic mock mode enabled by default.
-
-The container serves the FastAPI `/ask` endpoint locally without requiring a paid service.
+so the application can run locally without external API credentials.
 
 ---
 
-# 14. Useful Commands
+# 28. Useful Commands
 
-### Create support documents
+## Data pipeline
 
 ```bash
-python support_assistant\create_docs.py
+python data_pipeline/scrape_and_load.py
+python data_pipeline/queries.py
 ```
 
-### Build the vector store
+## Titanic analytics
 
 ```bash
-python support_assistant\ingest.py
+python analytics/eda.py
+python analytics/visual_analysis.py
+python analytics/standardization.py
+python analytics/modeling.py
+python analytics/regression.py
+python analytics/comparison.py
+python analytics/persistence.py
 ```
 
-### Test retrieval
+## Support assistant
 
 ```bash
-python support_assistant\rag.py
+python support_assistant/ingest.py
+uvicorn support_assistant.api:app --host 0.0.0.0 --port 8000
 ```
 
-### Test LangGraph
+## Docker
 
 ```bash
-python -m support_assistant.graph
-```
-
-### Start FastAPI
-
-```bash
-uvicorn support_assistant.api:app --reload
-```
-
-### Run the data pipeline
-
-```bash
-python data_pipeline\scrape_and_load.py
-python data_pipeline\queries.py
-```
-
-### Run analytics
-
-```bash
-python analytics\eda.py
-python analytics\visual_analysis.py
-python analytics\standardization.py
-python analytics\modeling.py
-python analytics\regression.py
-python analytics\comparison.py
-python analytics\persistence.py
+docker build -t zepto-data-ai:latest .
+docker run --rm -p 8000:8000 zepto-data-ai:latest
 ```
 
 ---
 
-# 15. Reproducibility Notes
+# 29. Reproducibility Notes
 
-The project is designed to run locally using the dependencies in the consolidated `requirements.txt`.
+The project is designed so that the major datasets and generated artifacts can be reproduced locally.
 
-Important fixed settings include:
+Important reproducibility decisions include:
+
+* fixed GBP → INR conversion rate of 105.50,
+* cached Titanic dataset,
+* deterministic train/test split,
+* train-only preprocessing,
+* deterministic mock support-assistant baseline,
+* explicit ChromaDB cosine distance,
+* persistent local vector database,
+* saved fitted machine-learning pipeline.
+
+The support assistant can regenerate its ChromaDB index using:
+
+```bash
+python support_assistant/ingest.py
+```
+
+---
+
+# 30. Git Workflow
+
+The repository development history includes a feature branch workflow:
 
 ```text
-GBP → INR conversion = 105.50
-classification test size = 20%
-random_state = 42
-embedding model = all-MiniLM-L6-v2
-mock assistant mode = enabled by default
+feature/capstone-final
+        ↓
+multiple commits
+        ↓
+merged/integrated into main
 ```
 
-No paid LLM service is required for the graded support-assistant workflow.
-
-The analytics module includes `analytics/titanic.csv` as the committed offline fallback for grading.
-
-The modeling workflow continues from the same cleaned Titanic dataset and applies predictive preprocessing after the train/test split.
+The repository therefore preserves the required feature-branch development workflow rather than showing only a single direct development path.
 
 ---
 
-# 16. Git Workflow
+# 31. Final Checklist
 
-Development changes were made using a feature branch and incorporated into `main`.
+## Module 1 — Data Pipeline
 
-The repository history contains multiple commits documenting the development and integration process, including the required feature-branch workflow and merge back into `main`.
+* [x] Requests + BeautifulSoup scraping
+* [x] 69 books
+* [x] 3 categories
+* [x] Required fields
+* [x] Data cleaning
+* [x] Fixed 105.50 GBP→INR conversion
+* [x] Normalized SQLite schema
+* [x] PK/FK relationship
+* [x] Required SQL operations
+* [x] JOIN
+* [x] `pd.read_sql`
+* [x] `pd.merge`
+
+## Module 2 — Analytics
+
+* [x] Titanic dataset cached locally
+* [x] Missing-value analysis
+* [x] IQR outliers
+* [x] Fare statistics and skewness
+* [x] Survival analysis
+* [x] Six-column correlation matrix
+* [x] Nine visual charts
+* [x] Four clearly multivariate charts
+* [x] Standardization
+* [x] Stratified split
+* [x] Train-only preprocessing
+* [x] Logistic Regression
+* [x] Decision Tree
+* [x] Random Forest
+* [x] Required classification metrics
+* [x] Imbalance comparison
+* [x] SMOTE
+* [x] GridSearchCV
+* [x] OOB score
+* [x] Linear Regression
+* [x] Regression metrics
+* [x] Residual analysis
+* [x] Final model comparison
+* [x] Persisted complete pipeline
+* [x] Reload + prediction
+
+## Module 3 — Support Assistant
+
+* [x] Eight policy documents
+* [x] MiniLM embeddings
+* [x] 384-dimensional vectors
+* [x] ChromaDB
+* [x] Explicit cosine distance
+* [x] Top-3 retrieval
+* [x] Prompt anatomy
+* [x] Negative constraint
+* [x] Few-shot examples
+* [x] LangGraph
+* [x] Required graph nodes
+* [x] Intent routing
+* [x] Mock baseline
+* [x] Structured Pydantic output
+* [x] Confidence validation
+* [x] Real-LLM retry path
+* [x] FastAPI `/ask`
+* [x] Swagger documentation
+* [x] Docker
+* [x] Reproducible local execution
 
 ---
 
-# 17. Project Summary
+# Conclusion
 
-The completed platform connects the major components as follows:
+This repository demonstrates an end-to-end progression from data ingestion and SQL analysis to machine learning, model persistence, semantic retrieval, LangGraph orchestration, structured LLM responses, FastAPI serving, and Dockerized local deployment.
 
-```text
-Web Scraping
-     |
-     v
-Cleaning + SQLite
-     |
-     v
-SQL Analysis
-     |
-     v
-EDA + Visualization
-     |
-     v
-Machine Learning
-     |
-     v
-Model Persistence
-     |
-     v
-Support Documents
-     |
-     v
-Embeddings + ChromaDB
-     |
-     v
-LangGraph Routing
-     |
-     v
-Pydantic Validation
-     |
-     v
-FastAPI
-     |
-     v
-Docker
-```
-
-The project brings these components together as one reproducible local platform rather than treating data collection, analytics, machine learning, and support automation as separate exercises.
-
----
-
-# Final Submission Checklist
-
-* All three modules are included in this single repository.
-* `/data_pipeline`, `/analytics`, and `/support_assistant` are present at the repository root.
-* One consolidated `requirements.txt` is provided.
-* Root README documents setup, execution, and design decisions.
-* Module 1 contains scraping, cleaning, fixed-rate conversion, normalized SQLite storage, SQL queries, outputs, `pd.read_sql`, and `pd.merge`.
-* Module 2 contains the committed `titanic.csv` fallback, missing-value analysis, EDA, required correlation analysis, interpreted charts, stratified modeling, training-only preprocessing, three classifiers, imbalance comparison, Random Forest tuning with GridSearchCV and OOB evaluation, regression, comparison metrics, and the complete saved pipeline.
-* Module 3 contains all eight policy documents, local embeddings, ChromaDB, the structured prompt, LangGraph routing, mock-mode behavior, Pydantic validation, FastAPI, Docker, example requests, and the RAG architecture description.
-* Required outputs and reproducibility scripts are committed.
-* Git feature-branch workflow is preserved in repository history.
-* No paid service is required for the graded baseline.
-* The single public GitHub repository is the submission artifact.
-
+The project is designed to be reproducible locally and to demonstrate practical AI/ML engineering decisions across the full data and AI application lifecycle.
