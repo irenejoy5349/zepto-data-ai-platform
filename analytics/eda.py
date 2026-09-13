@@ -1,16 +1,25 @@
 import os
-import seaborn as sns
+
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-# ---------------------------------------------------------
-# Paths
-# ---------------------------------------------------------
+# =========================================================
+# PATHS
+# =========================================================
+
 DATA_DIR = "analytics"
 
-RAW_DATA_PATH = os.path.join(DATA_DIR, "titanic.csv")
-CLEANED_DATA_PATH = os.path.join(DATA_DIR, "titanic_cleaned.csv")
+RAW_DATA_PATH = os.path.join(
+    DATA_DIR,
+    "titanic.csv"
+)
+
+CLEANED_DATA_PATH = os.path.join(
+    DATA_DIR,
+    "titanic_cleaned.csv"
+)
 
 MISSING_REPORT_PATH = os.path.join(
     DATA_DIR,
@@ -32,43 +41,88 @@ TASK4_REPORT_PATH = os.path.join(
     "task4_bivariate_report.txt"
 )
 
-os.makedirs(DATA_DIR, exist_ok=True)
+CORRELATION_PLOT_PATH = os.path.join(
+    DATA_DIR,
+    "correlation_heatmap.png"
+)
+
+os.makedirs(
+    DATA_DIR,
+    exist_ok=True
+)
 
 
 # =========================================================
 # TASK 1: LOAD TITANIC DATASET ONCE AND CACHE
 # =========================================================
 
-# Load the official seaborn Titanic dataset once and immediately cache it.
-# If internet access is unavailable, use the committed CSV as the offline fallback.
+print("=" * 70)
+print("TASK 1: LOAD TITANIC DATASET")
+print("=" * 70)
+
 try:
-    print("Loading Titanic dataset with seaborn...")
+    print("\nLoading Titanic dataset with seaborn...")
+
+    # One and only network/cache load of the raw dataset
     df = sns.load_dataset("titanic")
-    df.to_csv(RAW_DATA_PATH, index=False)
-    print(f"Fresh dataset cached to: {RAW_DATA_PATH}")
+
+    # Immediately save the loaded raw dataset as the
+    # committed offline fallback.
+    df.to_csv(
+        RAW_DATA_PATH,
+        index=False
+    )
+
+    print(
+        f"Fresh Titanic dataset saved to: {RAW_DATA_PATH}"
+    )
+
 except Exception as exc:
-    if not os.path.exists(RAW_DATA_PATH):
+
+    if not os.path.exists(
+        RAW_DATA_PATH
+    ):
         raise RuntimeError(
-            "Unable to load the Titanic dataset and no offline titanic.csv is available."
+            "Unable to load Titanic dataset and "
+            "analytics/titanic.csv is not available."
         ) from exc
-    print(f"Seaborn download unavailable ({exc}); loading offline fallback...")
-    df = pd.read_csv(RAW_DATA_PATH)
+
+    print(
+        "Seaborn dataset loading was unavailable."
+    )
+
+    print(
+        f"Reason: {exc}"
+    )
+
+    print(
+        "Loading committed offline fallback..."
+    )
+
+    df = pd.read_csv(
+        RAW_DATA_PATH
+    )
 
 
 # =========================================================
-# TASK 1: BASIC PROFILE
+# TASK 1: PROFILE
 # =========================================================
 
 print("\n" + "=" * 70)
 print("DATASET SHAPE")
 print("=" * 70)
 
-print(f"Rows    : {df.shape[0]}")
-print(f"Columns : {df.shape[1]}")
+print(
+    f"Rows    : {df.shape[0]}"
+)
+
+print(
+    f"Columns : {df.shape[1]}"
+)
 
 
 print("\n" + "=" * 70)
-print("COLUMN INFORMATION")
+print("DATASET INFO")
 print("=" * 70)
 
 df.info()
@@ -90,10 +144,13 @@ print(
 # =========================================================
 
 print("\n" + "=" * 70)
-print("MISSING VALUE ANALYSIS")
+print("TASK 2: MISSING VALUE ANALYSIS")
 print("=" * 70)
 
-missing_count = df.isnull().sum()
+missing_count = (
+    df.isnull()
+    .sum()
+)
 
 missing_percentage = (
     missing_count / len(df)
@@ -106,24 +163,33 @@ missing_summary = pd.DataFrame(
     }
 )
 
-missing_summary = missing_summary.sort_values(
-    by="missing_percentage",
-    ascending=False
+missing_summary = (
+    missing_summary[
+        missing_summary["missing_count"] > 0
+    ]
+    .sort_values(
+        by="missing_percentage",
+        ascending=False
+    )
 )
 
-print(missing_summary)
-
+print(
+    missing_summary.to_string()
+)
 
 missing_summary.to_csv(
-    MISSING_REPORT_PATH
+    MISSING_REPORT_PATH,
+    index=True
 )
 
-print("\nMissing-value report saved to:")
-print(MISSING_REPORT_PATH)
+print(
+    f"\nMissing-value report saved to: "
+    f"{MISSING_REPORT_PATH}"
+)
 
 
 # =========================================================
-# TASK 2: CLEAN DATASET
+# TASK 2: CLEANING
 # =========================================================
 
 print("\n" + "=" * 70)
@@ -131,64 +197,123 @@ print("CLEANING DATASET")
 print("=" * 70)
 
 
-# Drop deck: 77.22% missing
+# ---------------------------------------------------------
+# High missingness: deck
+# 77.22% missing
+# Decision: drop the entire column because the missing
+# proportion is too high for reliable imputation.
+# ---------------------------------------------------------
+
 df_clean = df.drop(
     columns=["deck"]
 ).copy()
 
-print("Dropped column: deck")
+print(
+    "deck: 77.22% missing -> column dropped"
+)
 
 
-# Drop rows with missing embarked / embark_town
+# ---------------------------------------------------------
+# Moderate missingness: age
+# 19.87% missing
+# Decision: median imputation because 5%–30% missing
+# requires imputation.
+# ---------------------------------------------------------
+
+age_median = df_clean["age"].median()
+
+df_clean["age"] = (
+    df_clean["age"]
+    .fillna(age_median)
+)
+
+print(
+    f"age: 19.87% missing -> median imputation "
+    f"(median={age_median:.4f})"
+)
+
+
+# ---------------------------------------------------------
+# Low missingness: embarked
+# 0.22% missing
+# Decision: drop affected rows because the missingness
+# is below 5%.
+# ---------------------------------------------------------
+
 rows_before = len(df_clean)
 
 df_clean = df_clean.dropna(
-    subset=[
-        "embarked",
-        "embark_town"
-    ]
+    subset=["embarked"]
 ).copy()
 
-rows_after_row_drop = len(df_clean)
+rows_after_embarked = len(df_clean)
 
 print(
-    "Dropped rows because "
-    "embarked/embark_town were missing:",
-    rows_before - rows_after_row_drop
-)
-
-
-# Median imputation for age
-age_median = df_clean["age"].median()
-
-df_clean["age"] = df_clean["age"].fillna(
-    age_median
+    "embarked: 0.22% missing -> affected rows dropped"
 )
 
 print(
-    f"Age median used for imputation: "
-    f"{age_median:.2f}"
+    "Rows removed for embarked:",
+    rows_before - rows_after_embarked
 )
 
 
-# Verify remaining missing values
-remaining_missing = df_clean.isnull().sum()
+# ---------------------------------------------------------
+# Low missingness: embark_town
+# 0.22% missing
+# Decision: drop affected rows because the missingness
+# is below 5%.
+# ---------------------------------------------------------
+
+rows_before = len(df_clean)
+
+df_clean = df_clean.dropna(
+    subset=["embark_town"]
+).copy()
+
+rows_after_embark_town = len(df_clean)
+
+print(
+    "embark_town: 0.22% missing -> affected rows dropped"
+)
+
+print(
+    "Rows removed for embark_town:",
+    rows_before - rows_after_embark_town
+)
+
+
+# =========================================================
+# REMAINING MISSING VALUES
+# =========================================================
+
+remaining_missing = (
+    df_clean.isnull()
+    .sum()
+)
 
 print("\n" + "=" * 70)
 print("REMAINING MISSING VALUES")
 print("=" * 70)
 
-print(remaining_missing)
+print(
+    remaining_missing
+)
 
 
-# Save cleaned dataset
+# =========================================================
+# SAVE CLEANED DATASET
+# =========================================================
+
 df_clean.to_csv(
     CLEANED_DATA_PATH,
     index=False
 )
 
-print("\nCleaned dataset saved to:")
-print(CLEANED_DATA_PATH)
+print(
+    f"\nCleaned dataset saved to: "
+    f"{CLEANED_DATA_PATH}"
+)
 
 print(
     f"Original rows : {len(df)}"
@@ -204,7 +329,7 @@ print(
 
 
 # =========================================================
-# SAVE PROFILE
+# SAVE PROFILE REPORT
 # =========================================================
 
 with open(
@@ -218,37 +343,39 @@ with open(
     )
 
     file.write(
-        "=" * 60 + "\n\n"
+        "=" * 70 + "\n\n"
     )
 
     file.write(
-        f"Original rows: {df.shape[0]}\n"
+        f"Original shape: {df.shape}\n"
     )
 
     file.write(
-        f"Original columns: {df.shape[1]}\n\n"
+        f"Cleaned shape: {df_clean.shape}\n\n"
     )
 
     file.write(
-        "Column Data Types\n"
+        "Data types\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
         df.dtypes.to_string()
     )
 
-    file.write("\n\n")
-
     file.write(
-        "Descriptive Statistics\n"
+        "\n\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "Descriptive statistics\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -257,42 +384,53 @@ with open(
         ).to_string()
     )
 
-    file.write("\n\n")
-
     file.write(
-        "Missing Value Summary\n"
+        "\n\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "Missing values\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
     )
 
     file.write(
         missing_summary.to_string()
     )
 
-    file.write("\n\n")
-
     file.write(
-        "Cleaning Decisions\n"
+        "\n\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "Cleaning decisions\n"
     )
 
     file.write(
-        "deck: 77.22% missing -> dropped column\n"
+        "-" * 70 + "\n"
+    )
+
+    file.write(
+        "deck: 77.22% missing -> dropped\n"
+    )
+
+    file.write(
         "age: 19.87% missing -> median imputation\n"
+    )
+
+    file.write(
         "embarked: 0.22% missing -> affected rows dropped\n"
+    )
+
+    file.write(
         "embark_town: 0.22% missing -> affected rows dropped\n"
     )
 
 print(
-    "\nDataset profile saved to:"
+    f"\nProfile report saved to: {PROFILE_PATH}"
 )
-
-print(PROFILE_PATH)
 
 
 # =========================================================
@@ -304,9 +442,9 @@ print("TASK 3: UNIVARIATE ANALYSIS")
 print("=" * 70)
 
 
-# ---------------------------------------------------------
-# Age Histogram
-# ---------------------------------------------------------
+# =========================================================
+# 3.1 AGE HISTOGRAM
+# =========================================================
 
 plt.figure(
     figsize=(8, 5)
@@ -318,9 +456,17 @@ plt.hist(
     edgecolor="black"
 )
 
-plt.xlabel("Age")
-plt.ylabel("Frequency")
-plt.title("Distribution of Age")
+plt.xlabel(
+    "Age"
+)
+
+plt.ylabel(
+    "Frequency"
+)
+
+plt.title(
+    "Distribution of Age"
+)
 
 plt.tight_layout()
 
@@ -337,9 +483,9 @@ plt.savefig(
 plt.close()
 
 
-# ---------------------------------------------------------
-# Fare Histogram
-# ---------------------------------------------------------
+# =========================================================
+# 3.2 FARE HISTOGRAM
+# =========================================================
 
 plt.figure(
     figsize=(8, 5)
@@ -351,9 +497,17 @@ plt.hist(
     edgecolor="black"
 )
 
-plt.xlabel("Fare")
-plt.ylabel("Frequency")
-plt.title("Distribution of Fare")
+plt.xlabel(
+    "Fare"
+)
+
+plt.ylabel(
+    "Frequency"
+)
+
+plt.title(
+    "Distribution of Fare"
+)
 
 plt.tight_layout()
 
@@ -370,21 +524,26 @@ plt.savefig(
 plt.close()
 
 
-# ---------------------------------------------------------
-# Age Boxplot
-# ---------------------------------------------------------
+# =========================================================
+# 3.3 AGE BOXPLOT
+# =========================================================
 
 plt.figure(
-    figsize=(7, 4)
+    figsize=(8, 4)
 )
 
 plt.boxplot(
     df_clean["age"],
-    orientation="horizontal"
+    vert=False
 )
 
-plt.xlabel("Age")
-plt.title("Age Boxplot")
+plt.xlabel(
+    "Age"
+)
+
+plt.title(
+    "Age Boxplot"
+)
 
 plt.tight_layout()
 
@@ -401,21 +560,26 @@ plt.savefig(
 plt.close()
 
 
-# ---------------------------------------------------------
-# Fare Boxplot
-# ---------------------------------------------------------
+# =========================================================
+# 3.4 FARE BOXPLOT
+# =========================================================
 
 plt.figure(
-    figsize=(7, 4)
+    figsize=(8, 4)
 )
 
 plt.boxplot(
     df_clean["fare"],
-    orientation="horizontal"
+    vert=False
 )
 
-plt.xlabel("Fare")
-plt.title("Fare Boxplot")
+plt.xlabel(
+    "Fare"
+)
+
+plt.title(
+    "Fare Boxplot"
+)
 
 plt.tight_layout()
 
@@ -432,31 +596,40 @@ plt.savefig(
 plt.close()
 
 
-# ---------------------------------------------------------
-# IQR Function
-# ---------------------------------------------------------
+# =========================================================
+# 3.5 IQR OUTLIER FUNCTION
+# =========================================================
 
-def calculate_iqr_outliers(series):
+def calculate_iqr_statistics(
+    series
+):
+    q1 = series.quantile(
+        0.25
+    )
 
-    q1 = series.quantile(0.25)
-
-    q3 = series.quantile(0.75)
+    q3 = series.quantile(
+        0.75
+    )
 
     iqr = q3 - q1
 
-    lower_bound = q1 - (
-        1.5 * iqr
+    lower_bound = (
+        q1 - 1.5 * iqr
     )
 
-    upper_bound = q3 + (
-        1.5 * iqr
+    upper_bound = (
+        q3 + 1.5 * iqr
     )
 
-    outliers = series[
+    outlier_mask = (
         (series < lower_bound)
         |
         (series > upper_bound)
-    ]
+    )
+
+    outlier_count = int(
+        outlier_mask.sum()
+    )
 
     return (
         q1,
@@ -464,68 +637,72 @@ def calculate_iqr_outliers(series):
         iqr,
         lower_bound,
         upper_bound,
-        len(outliers)
+        outlier_count
     )
 
 
-# ---------------------------------------------------------
-# Age IQR
-# ---------------------------------------------------------
+# =========================================================
+# 3.6 AGE IQR
+# =========================================================
 
 (
     age_q1,
     age_q3,
     age_iqr,
-    age_lower,
-    age_upper,
-    age_outliers
-) = calculate_iqr_outliers(
+    age_lower_bound,
+    age_upper_bound,
+    age_outlier_count
+) = calculate_iqr_statistics(
     df_clean["age"]
 )
 
 
-# ---------------------------------------------------------
-# Fare IQR
-# ---------------------------------------------------------
+# =========================================================
+# 3.7 FARE IQR
+# =========================================================
 
 (
     fare_q1,
     fare_q3,
     fare_iqr,
-    fare_lower,
-    fare_upper,
-    fare_outliers
-) = calculate_iqr_outliers(
+    fare_lower_bound,
+    fare_upper_bound,
+    fare_outlier_count
+) = calculate_iqr_statistics(
     df_clean["fare"]
 )
 
+
+# =========================================================
+# PRINT IQR RESULTS
+# =========================================================
 
 print("\n" + "-" * 70)
 print("AGE IQR ANALYSIS")
 print("-" * 70)
 
 print(
-    f"Q1               : {age_q1:.2f}"
+    f"Q1           : {age_q1:.4f}"
 )
 
 print(
-    f"Q3               : {age_q3:.2f}"
+    f"Q3           : {age_q3:.4f}"
 )
 
 print(
-    f"IQR              : {age_iqr:.2f}"
+    f"IQR          : {age_iqr:.4f}"
 )
 
 print(
-    f"Lower Bound      : {age_lower:.2f}"
+    f"Lower bound  : {age_lower_bound:.4f}"
 )
 
 print(
-    f"Upper Bound      : {age_upper:.2f}"
+    f"Upper bound  : {age_upper_bound:.4f}"
 )
 
 print(
-    f"Outlier Count    : {age_outliers}"
+    f"Outlier count: {age_outlier_count}"
 )
 
 
@@ -534,47 +711,53 @@ print("FARE IQR ANALYSIS")
 print("-" * 70)
 
 print(
-    f"Q1               : {fare_q1:.2f}"
+    f"Q1           : {fare_q1:.4f}"
 )
 
 print(
-    f"Q3               : {fare_q3:.2f}"
+    f"Q3           : {fare_q3:.4f}"
 )
 
 print(
-    f"IQR              : {fare_iqr:.2f}"
+    f"IQR          : {fare_iqr:.4f}"
 )
 
 print(
-    f"Lower Bound      : {fare_lower:.2f}"
+    f"Lower bound  : {fare_lower_bound:.4f}"
 )
 
 print(
-    f"Upper Bound      : {fare_upper:.2f}"
+    f"Upper bound  : {fare_upper_bound:.4f}"
 )
 
 print(
-    f"Outlier Count    : {fare_outliers}"
+    f"Outlier count: {fare_outlier_count}"
 )
 
 
-# ---------------------------------------------------------
-# Fare Statistics
-# ---------------------------------------------------------
+# =========================================================
+# 3.8 FARE STATISTICS
+# =========================================================
 
-fare_mean = df_clean["fare"].mean()
+fare_mean = df_clean[
+    "fare"
+].mean()
 
-fare_median = df_clean["fare"].median()
+fare_median = df_clean[
+    "fare"
+].median()
 
 fare_mode = (
-    df_clean["fare"]
+    df_clean[
+        "fare"
+    ]
     .mode()
     .iloc[0]
 )
 
-fare_skewness = (
-    df_clean["fare"].skew()
-)
+fare_skewness = df_clean[
+    "fare"
+].skew()
 
 
 print("\n" + "-" * 70)
@@ -582,25 +765,25 @@ print("FARE STATISTICS")
 print("-" * 70)
 
 print(
-    f"Mean       : {fare_mean:.4f}"
+    f"Mean     : {fare_mean:.4f}"
 )
 
 print(
-    f"Median     : {fare_median:.4f}"
+    f"Median   : {fare_median:.4f}"
 )
 
 print(
-    f"Mode       : {fare_mode:.4f}"
+    f"Mode     : {fare_mode:.4f}"
 )
 
 print(
-    f"Skewness   : {fare_skewness:.4f}"
+    f"Skewness : {fare_skewness:.4f}"
 )
 
 
-# ---------------------------------------------------------
-# Save Task 3 report
-# ---------------------------------------------------------
+# =========================================================
+# 3.9 SAVE TASK 3 REPORT
+# =========================================================
 
 with open(
     TASK3_REPORT_PATH,
@@ -613,7 +796,7 @@ with open(
     )
 
     file.write(
-        "=" * 60 + "\n\n"
+        "=" * 70 + "\n\n"
     )
 
     file.write(
@@ -621,7 +804,7 @@ with open(
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -637,15 +820,15 @@ with open(
     )
 
     file.write(
-        f"Lower Bound: {age_lower:.4f}\n"
+        f"Lower bound: {age_lower_bound:.4f}\n"
     )
 
     file.write(
-        f"Upper Bound: {age_upper:.4f}\n"
+        f"Upper bound: {age_upper_bound:.4f}\n"
     )
 
     file.write(
-        f"Outlier Count: {age_outliers}\n\n"
+        f"Outlier count: {age_outlier_count}\n\n"
     )
 
     file.write(
@@ -653,7 +836,7 @@ with open(
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -669,15 +852,15 @@ with open(
     )
 
     file.write(
-        f"Lower Bound: {fare_lower:.4f}\n"
+        f"Lower bound: {fare_lower_bound:.4f}\n"
     )
 
     file.write(
-        f"Upper Bound: {fare_upper:.4f}\n"
+        f"Upper bound: {fare_upper_bound:.4f}\n"
     )
 
     file.write(
-        f"Outlier Count: {fare_outliers}\n\n"
+        f"Outlier count: {fare_outlier_count}\n\n"
     )
 
     file.write(
@@ -685,7 +868,7 @@ with open(
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -704,11 +887,30 @@ with open(
         f"Skewness: {fare_skewness:.4f}\n"
     )
 
-print(
-    "\nTask 3 report saved to:"
-)
+    file.write(
+        "\nInterpretation:\n"
+    )
 
-print(TASK3_REPORT_PATH)
+    if (
+        fare_mean
+        > fare_median
+        > fare_mode
+    ):
+        file.write(
+            "The ordering mean > median > mode, "
+            "together with positive skewness, indicates "
+            "a right-skewed fare distribution.\n"
+        )
+    else:
+        file.write(
+            "The fare distribution was evaluated using "
+            "mean, median, mode, and skewness.\n"
+        )
+
+print(
+    f"\nTask 3 report saved to: "
+    f"{TASK3_REPORT_PATH}"
+)
 
 
 # =========================================================
@@ -720,21 +922,51 @@ print("TASK 4: BIVARIATE ANALYSIS")
 print("=" * 70)
 
 
-# ---------------------------------------------------------
-# 4.1 Survival by Sex
-# ---------------------------------------------------------
+# =========================================================
+# 4.1 SURVIVAL BY SEX
+# REQUIRED: BOOLEAN MASKING
+# =========================================================
 
-survival_by_sex = (
-    df_clean
-    .groupby("sex", observed=True)["survived"]
-    .agg(
-        survival_rate="mean",
-        passenger_count="count"
-    )
-    .reset_index()
+female_mask = (
+    df_clean["sex"] == "female"
 )
 
-survival_by_sex["survival_rate"] *= 100
+male_mask = (
+    df_clean["sex"] == "male"
+)
+
+female_survival_rate = (
+    df_clean.loc[
+        female_mask,
+        "survived"
+    ].mean()
+    * 100
+)
+
+male_survival_rate = (
+    df_clean.loc[
+        male_mask,
+        "survived"
+    ].mean()
+    * 100
+)
+
+survival_by_sex = pd.DataFrame(
+    {
+        "sex": [
+            "female",
+            "male"
+        ],
+        "survival_rate": [
+            female_survival_rate,
+            male_survival_rate
+        ],
+        "passenger_count": [
+            int(female_mask.sum()),
+            int(male_mask.sum())
+        ]
+    }
+)
 
 print("\n" + "-" * 70)
 print("SURVIVAL RATE BY SEX")
@@ -747,24 +979,69 @@ print(
 )
 
 
-# ---------------------------------------------------------
-# 4.2 Survival by Passenger Class
-# ---------------------------------------------------------
+# =========================================================
+# 4.2 SURVIVAL BY PASSENGER CLASS
+# REQUIRED: BOOLEAN MASKING
+# =========================================================
 
-survival_by_pclass = (
-    df_clean
-    .groupby("pclass", observed=True)["survived"]
-    .agg(
-        survival_rate="mean",
-        passenger_count="count"
-    )
-    .reset_index()
+class_1_mask = (
+    df_clean["pclass"] == 1
 )
 
-survival_by_pclass["survival_rate"] *= 100
+class_2_mask = (
+    df_clean["pclass"] == 2
+)
+
+class_3_mask = (
+    df_clean["pclass"] == 3
+)
+
+class_1_survival_rate = (
+    df_clean.loc[
+        class_1_mask,
+        "survived"
+    ].mean()
+    * 100
+)
+
+class_2_survival_rate = (
+    df_clean.loc[
+        class_2_mask,
+        "survived"
+    ].mean()
+    * 100
+)
+
+class_3_survival_rate = (
+    df_clean.loc[
+        class_3_mask,
+        "survived"
+    ].mean()
+    * 100
+)
+
+survival_by_pclass = pd.DataFrame(
+    {
+        "pclass": [
+            1,
+            2,
+            3
+        ],
+        "survival_rate": [
+            class_1_survival_rate,
+            class_2_survival_rate,
+            class_3_survival_rate
+        ],
+        "passenger_count": [
+            int(class_1_mask.sum()),
+            int(class_2_mask.sum()),
+            int(class_3_mask.sum())
+        ]
+    }
+)
 
 print("\n" + "-" * 70)
-print("SURVIVAL RATE BY PCLASS")
+print("SURVIVAL RATE BY PASSENGER CLASS")
 print("-" * 70)
 
 print(
@@ -774,27 +1051,126 @@ print(
 )
 
 
-# ---------------------------------------------------------
-# 4.3 Survival by Sex + Passenger Class
-# ---------------------------------------------------------
+# =========================================================
+# 4.3 SURVIVAL BY SEX + PASSENGER CLASS
+# REQUIRED: BOOLEAN MASKING WITH &
+# =========================================================
 
-survival_by_sex_pclass = (
-    df_clean
-    .groupby(
-        ["sex", "pclass"],
-        observed=True
-    )["survived"]
-    .agg(
-        survival_rate="mean",
-        passenger_count="count"
-    )
-    .reset_index()
+female_class_1_mask = (
+    (df_clean["sex"] == "female")
+    &
+    (df_clean["pclass"] == 1)
 )
 
-survival_by_sex_pclass["survival_rate"] *= 100
+female_class_2_mask = (
+    (df_clean["sex"] == "female")
+    &
+    (df_clean["pclass"] == 2)
+)
+
+female_class_3_mask = (
+    (df_clean["sex"] == "female")
+    &
+    (df_clean["pclass"] == 3)
+)
+
+male_class_1_mask = (
+    (df_clean["sex"] == "male")
+    &
+    (df_clean["pclass"] == 1)
+)
+
+male_class_2_mask = (
+    (df_clean["sex"] == "male")
+    &
+    (df_clean["pclass"] == 2)
+)
+
+male_class_3_mask = (
+    (df_clean["sex"] == "male")
+    &
+    (df_clean["pclass"] == 3)
+)
+
+
+def masked_survival_rate(
+    mask
+):
+    if mask.sum() == 0:
+        return 0.0
+
+    return (
+        df_clean.loc[
+            mask,
+            "survived"
+        ].mean()
+        * 100
+    )
+
+
+survival_by_sex_pclass = pd.DataFrame(
+    {
+        "sex": [
+            "female",
+            "female",
+            "female",
+            "male",
+            "male",
+            "male"
+        ],
+        "pclass": [
+            1,
+            2,
+            3,
+            1,
+            2,
+            3
+        ],
+        "survival_rate": [
+            masked_survival_rate(
+                female_class_1_mask
+            ),
+            masked_survival_rate(
+                female_class_2_mask
+            ),
+            masked_survival_rate(
+                female_class_3_mask
+            ),
+            masked_survival_rate(
+                male_class_1_mask
+            ),
+            masked_survival_rate(
+                male_class_2_mask
+            ),
+            masked_survival_rate(
+                male_class_3_mask
+            )
+        ],
+        "passenger_count": [
+            int(
+                female_class_1_mask.sum()
+            ),
+            int(
+                female_class_2_mask.sum()
+            ),
+            int(
+                female_class_3_mask.sum()
+            ),
+            int(
+                male_class_1_mask.sum()
+            ),
+            int(
+                male_class_2_mask.sum()
+            ),
+            int(
+                male_class_3_mask.sum()
+            )
+        ]
+    }
+)
 
 print("\n" + "-" * 70)
-print("SURVIVAL RATE BY SEX + PCLASS")
+print("SURVIVAL RATE BY SEX + PASSENGER CLASS")
 print("-" * 70)
 
 print(
@@ -804,10 +1180,10 @@ print(
 )
 
 
-# ---------------------------------------------------------
-# 4.4 Correlation Matrix
-# Exactly six required columns
-# ---------------------------------------------------------
+# =========================================================
+# 4.4 CORRELATION MATRIX
+# EXACTLY THE SIX REQUIRED COLUMNS
+# =========================================================
 
 correlation_columns = [
     "survived",
@@ -825,29 +1201,29 @@ correlation_matrix = (
     .corr()
 )
 
-
 print("\n" + "-" * 70)
 print("CORRELATION MATRIX")
 print("-" * 70)
 
 print(
-    correlation_matrix.round(4)
+    correlation_matrix.to_string(
+        float_format=lambda value: f"{value:.4f}"
+    )
 )
 
 
-# ---------------------------------------------------------
-# 4.5 Heatmap
-# ---------------------------------------------------------
+# =========================================================
+# 4.5 HEATMAP
+# =========================================================
 
 plt.figure(
-    figsize=(8, 6)
+    figsize=(9, 7)
 )
 
 sns.heatmap(
     correlation_matrix,
     annot=True,
     fmt=".2f",
-    linewidths=0.5,
     square=True
 )
 
@@ -857,31 +1233,22 @@ plt.title(
 
 plt.tight_layout()
 
-CORRELATION_HEATMAP_PATH = os.path.join(
-    DATA_DIR,
-    "correlation_heatmap.png"
-)
-
 plt.savefig(
-    CORRELATION_HEATMAP_PATH,
+    CORRELATION_PLOT_PATH,
     dpi=150
 )
 
 plt.close()
 
 print(
-    "\nCorrelation heatmap saved to:"
-)
-
-print(
-    CORRELATION_HEATMAP_PATH
+    f"\nCorrelation heatmap saved to: "
+    f"{CORRELATION_PLOT_PATH}"
 )
 
 
-# ---------------------------------------------------------
-# 4.6 Find two strongest absolute
-# off-diagonal correlations
-# ---------------------------------------------------------
+# =========================================================
+# 4.6 FIND TOP TWO ABSOLUTE OFF-DIAGONAL CORRELATIONS
+# =========================================================
 
 correlation_pairs = []
 
@@ -894,20 +1261,29 @@ for i in range(
         len(correlation_columns)
     ):
 
-        col_1 = correlation_columns[i]
-        col_2 = correlation_columns[j]
+        feature_a = (
+            correlation_columns[i]
+        )
 
-        value = correlation_matrix.loc[
-            col_1,
-            col_2
-        ]
+        feature_b = (
+            correlation_columns[j]
+        )
+
+        coefficient = (
+            correlation_matrix.loc[
+                feature_a,
+                feature_b
+            ]
+        )
 
         correlation_pairs.append(
             {
-                "variable_1": col_1,
-                "variable_2": col_2,
-                "correlation": value,
-                "absolute_correlation": abs(value)
+                "feature_a": feature_a,
+                "feature_b": feature_b,
+                "correlation": coefficient,
+                "absolute_correlation": abs(
+                    coefficient
+                )
             }
         )
 
@@ -916,85 +1292,33 @@ correlation_pairs_df = pd.DataFrame(
     correlation_pairs
 )
 
-strongest_two = (
+top_two_correlations = (
     correlation_pairs_df
     .sort_values(
         by="absolute_correlation",
         ascending=False
     )
     .head(2)
+    .reset_index(
+        drop=True
+    )
 )
 
-
 print("\n" + "-" * 70)
-print("TWO STRONGEST ABSOLUTE CORRELATIONS")
+print("TOP TWO ABSOLUTE OFF-DIAGONAL CORRELATIONS")
 print("-" * 70)
 
 print(
-    strongest_two.to_string(
-        index=False
+    top_two_correlations.to_string(
+        index=False,
+        float_format=lambda value: f"{value:.4f}"
     )
 )
 
 
-# ---------------------------------------------------------
-# Save Task 4 numerical outputs
-# ---------------------------------------------------------
-
-SURVIVAL_SEX_PATH = os.path.join(
-    DATA_DIR,
-    "survival_by_sex.csv"
-)
-
-SURVIVAL_PCLASS_PATH = os.path.join(
-    DATA_DIR,
-    "survival_by_pclass.csv"
-)
-
-SURVIVAL_SEX_PCLASS_PATH = os.path.join(
-    DATA_DIR,
-    "survival_by_sex_pclass.csv"
-)
-
-CORRELATION_MATRIX_PATH = os.path.join(
-    DATA_DIR,
-    "correlation_matrix.csv"
-)
-
-STRONGEST_CORRELATIONS_PATH = os.path.join(
-    DATA_DIR,
-    "strongest_correlations.csv"
-)
-
-
-survival_by_sex.to_csv(
-    SURVIVAL_SEX_PATH,
-    index=False
-)
-
-survival_by_pclass.to_csv(
-    SURVIVAL_PCLASS_PATH,
-    index=False
-)
-
-survival_by_sex_pclass.to_csv(
-    SURVIVAL_SEX_PCLASS_PATH,
-    index=False
-)
-
-correlation_matrix.to_csv(
-    CORRELATION_MATRIX_PATH
-)
-
-strongest_two.to_csv(
-    STRONGEST_CORRELATIONS_PATH,
-    index=False
-)
-
-
-# ---------------------------------------------------------
-# Save Task 4 report
-# ---------------------------------------------------------
+# =========================================================
+# TASK 4 REPORT
+# =========================================================
 
 with open(
     TASK4_REPORT_PATH,
@@ -1007,7 +1331,7 @@ with open(
     )
 
     file.write(
-        "=" * 60 + "\n\n"
+        "=" * 70 + "\n\n"
     )
 
     file.write(
@@ -1015,7 +1339,7 @@ with open(
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -1024,14 +1348,16 @@ with open(
         )
     )
 
-    file.write("\n\n")
-
     file.write(
-        "SURVIVAL BY PCLASS\n"
+        "\n\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "SURVIVAL BY PASSENGER CLASS\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -1040,14 +1366,16 @@ with open(
         )
     )
 
-    file.write("\n\n")
-
     file.write(
-        "SURVIVAL BY SEX + PCLASS\n"
+        "\n\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "SURVIVAL BY SEX + PASSENGER CLASS\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
     )
 
     file.write(
@@ -1056,52 +1384,195 @@ with open(
         )
     )
 
-    file.write("\n\n")
+    file.write(
+        "\n\n"
+    )
+
+    file.write(
+        "CORRELATION COLUMNS\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
+    )
+
+    file.write(
+        ", ".join(
+            correlation_columns
+        )
+    )
+
+    file.write(
+        "\n\n"
+    )
 
     file.write(
         "CORRELATION MATRIX\n"
     )
 
     file.write(
-        "-" * 60 + "\n"
+        "-" * 70 + "\n"
     )
 
     file.write(
-        correlation_matrix.round(4).to_string()
-    )
-
-    file.write("\n\n")
-
-    file.write(
-        "TWO STRONGEST ABSOLUTE CORRELATIONS\n"
-    )
-
-    file.write(
-        "-" * 60 + "\n"
-    )
-
-    file.write(
-        strongest_two.to_string(
-            index=False
+        correlation_matrix.to_string(
+            float_format=lambda value: f"{value:.4f}"
         )
     )
 
+    file.write(
+        "\n\n"
+    )
+
+    file.write(
+        "TOP TWO ABSOLUTE OFF-DIAGONAL CORRELATIONS\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
+    )
+
+    file.write(
+        top_two_correlations.to_string(
+            index=False,
+            float_format=lambda value: f"{value:.4f}"
+        )
+    )
+
+    file.write(
+        "\n\n"
+    )
+
+    # -----------------------------------------------------
+    # Written interpretation
+    # -----------------------------------------------------
+
+    file.write(
+        "INTERPRETATION\n"
+    )
+
+    file.write(
+        "-" * 70 + "\n"
+    )
+
+    file.write(
+        f"Female passengers had a survival rate of "
+        f"{female_survival_rate:.2f}%, compared with "
+        f"{male_survival_rate:.2f}% for male passengers. "
+        f"This indicates a strong observed association "
+        f"between sex and survival.\n\n"
+    )
+
+    file.write(
+        f"First-class survival was "
+        f"{class_1_survival_rate:.2f}%, second-class "
+        f"survival was {class_2_survival_rate:.2f}%, "
+        f"and third-class survival was "
+        f"{class_3_survival_rate:.2f}%. This shows that "
+        f"survival generally decreased as passenger class "
+        f"moved from first to third.\n\n"
+    )
+
+    for _, row in (
+        top_two_correlations.iterrows()
+    ):
+
+        feature_a = row[
+            "feature_a"
+        ]
+
+        feature_b = row[
+            "feature_b"
+        ]
+
+        coefficient = row[
+            "correlation"
+        ]
+
+        if (
+            coefficient < 0
+        ):
+            direction = "negative"
+        else:
+            direction = "positive"
+
+        file.write(
+            f"The correlation between {feature_a} and "
+            f"{feature_b} is {coefficient:.4f}, which "
+            f"indicates a {direction} relationship. "
+            f"The magnitude of this coefficient is among "
+            f"the two strongest absolute off-diagonal "
+            f"correlations in the required six-feature "
+            f"matrix.\n\n"
+        )
+
+
+# =========================================================
+# FINAL SUMMARY
+# =========================================================
 
 print(
-    "\nTask 4 report saved to:"
+    "\n" + "=" * 70
 )
 
-print(TASK4_REPORT_PATH)
-
-
-# =========================================================
-# FINAL PREVIEW
-# =========================================================
-
-print("\n" + "=" * 70)
-print("CLEANED DATASET - FIRST 5 ROWS")
-print("=" * 70)
+print(
+    "EDA TASKS 1–4 COMPLETE"
+)
 
 print(
-    df_clean.head()
+    "=" * 70
+)
+
+print(
+    f"Raw fallback: {RAW_DATA_PATH}"
+)
+
+print(
+    f"Cleaned data: {CLEANED_DATA_PATH}"
+)
+
+print(
+    f"Task 3 report: {TASK3_REPORT_PATH}"
+)
+
+print(
+    f"Task 4 report: {TASK4_REPORT_PATH}"
+)
+
+print(
+    f"Correlation heatmap: {CORRELATION_PLOT_PATH}"
+)
+
+print(
+    "\nRequired boolean masking was used for:"
+)
+
+print(
+    "- survival by sex"
+)
+
+print(
+    "- survival by passenger class"
+)
+
+print(
+    "- survival by sex AND passenger class using '&'"
+)
+
+print(
+    "\nExactly these six columns were used for correlation:"
+)
+
+print(
+    ", ".join(
+        correlation_columns
+    )
+)
+
+print(
+    "\nadult_male and alone were excluded."
+)
+
+print(
+    "\nEDA complete."
 )
