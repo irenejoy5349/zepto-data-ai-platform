@@ -1,4 +1,4 @@
-# Zepto Data & AI Platform
+[# Zepto Data & AI Platform
 
 This project combines three practical components into one local AI and data platform:
 
@@ -724,3 +724,4 @@ The project brings these components together as one reproducible local platform 
 ### Reproducibility Note
 
 Each module includes runnable scripts so the submitted outputs can be regenerated locally from the documented commands.
+](https://github.com/irenejoy5349/zepto-data-ai-platform/blob/main/README.md)
